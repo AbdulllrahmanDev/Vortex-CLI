@@ -47,6 +47,25 @@ from config import (
     DEFAULT_DOWNLOADS_DIR
 )
 
+from prompt_toolkit.keys import Keys
+import questionary
+from questionary import Choice, Style
+
+# Patch Questionary to bind ESC key to cancel/step back without quitting CLI
+_orig_question_init = questionary.Question.__init__
+
+def _patched_question_init(self, application, *args, **kwargs):
+    _orig_question_init(self, application, *args, **kwargs)
+    if hasattr(application, "key_bindings") and application.key_bindings:
+        try:
+            @application.key_bindings.add(Keys.Escape, eager=True)
+            def _handle_escape(event):
+                event.app.exit(result=None)
+        except Exception:
+            pass
+
+questionary.Question.__init__ = _patched_question_init
+
 console = Console()
 
 # Custom Questionary styling matching unified Cyan / Monochrome aesthetic
@@ -293,9 +312,12 @@ def interactive_mode():
             style=custom_style
         ).ask()
 
-        if not main_choice or main_choice == "exit":
+        if main_choice == "exit":
             console.print("\n[bold cyan]✦ Session Terminated. Thank you for using VORTEX Media Engine. ✦[/bold cyan]\n")
             break
+
+        if not main_choice:
+            continue
 
         if main_choice == "settings":
             settings_menu()

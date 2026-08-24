@@ -1,164 +1,293 @@
-# ✦ VORTEX CLI — Next-Gen Media Engine & Stream Grabber ✦
+# 🌀 VORTEX CLI
 
-**VORTEX CLI** is a high-performance, interactive command-line interface engineered for lightning-fast media extraction, smart keyword searching, format transcoding, and batch stream processing across 1000+ online video & audio platforms.
+<div align="center">
 
-Built with a unified, dark-mode cyberpunk terminal aesthetic, interactive arrow-key menus, real-time download telemetry (`MB/s`, ETA, transfer graphs), and persistent configuration.
+[![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge)](https://github.com/AbdulllrahmanDev/Vortex-CLI)
+[![Engine](https://img.shields.io/badge/Engine-yt--dlp%20%2B%20FFmpeg-cyan.svg?style=for-the-badge)](https://github.com/yt-dlp/yt-dlp)
 
----
+**Next-Gen Ultra Media Engine & High-Speed Stream Grabber**
 
-## ◈ Key Capabilities & Features
+*An interactive, aesthetic, and automated command-line tool to search, extract, and transcode video and audio streams from 1000+ platforms.*
 
-- ◈ **Interactive Terminal Dashboard**: Arrow-key driven menus powered by `Rich` and `Questionary` with real-time transfer telemetry and stream previews.
-- ◈ **Smart Keyword Search Engine**: Download media without copying links—simply type search terms and select from top matched candidate streams.
-- ◈ **Universal Stream Compatibility**: Full extraction support for YouTube, TikTok, Twitter/X, Instagram, Facebook, SoundCloud, Pinterest, Vimeo, and direct MP4/MP3 URLs.
-- ◈ **Multi-Tier Quality Profiles**:
-  - **▶ Video Stream (MP4)**:
-    - `◆ Ultra Profile`: 4K / 1080p 60fps (Highest available definition with embedded audio).
-    - `◇ Balanced Profile`: 720p / 480p (Optimized bandwidth & storage balance).
-    - `○ Compact Profile`: 360p / 240p (Lightweight & low-footprint).
-  - **♬ Audio Stream (MP3)**:
-    - `◆ Studio Master`: 320 kbps MP3 with embedded album artwork & ID3 metadata.
-    - `◇ Standard Fidelity`: 192 kbps MP3 (CD-quality).
-    - `○ Bandwidth Saver`: 128 kbps MP3 (Rapid, compact transfer).
-- ◈ **Multi-Stream Batch Pipeline**: Queue multiple URLs via interactive paste or load directly from `.txt` batch files.
-- ◈ **Persistent Preferences & Directory Storage**: Seamlessly customize your default storage path (`downloads/`, Desktop, System Downloads, or custom absolute path) with auto-persistence in `config.json`.
-- ◈ **Unicode & Arabic Filename Integrity**: Native Unicode preservation ensuring full compatibility without character corruption.
+[Features](#-features) • [Quick Start](#-quick-start) • [Installation](#-installation-guide) • [Usage](#-usage-guide) • [CLI Commands](#-headless-cli-automation) • [Configuration](#-configuration) • [Troubleshooting](#-troubleshooting--faq)
+
+</div>
 
 ---
 
-## ⚡ Global Installation & Setup Guide
+## 📖 Overview
 
-### 1. Prerequisites (All Operating Systems)
-Make sure you have **Python 3.8+** and **pip** installed on your system.
+**VORTEX CLI** is a modern terminal-based media downloader designed to be both beginner-friendly and powerhouse-capable. Whether you prefer an intuitive interactive menu with live visual progress bars, or headless one-liner commands for batch scripts, VORTEX handles downloading, metadata extraction, audio conversion, and stream multiplexing seamlessly.
 
-Clone or navigate to the project directory:
-```bash
-git clone https://github.com/your-username/vortex-cli.git
-cd "Download all by one"
+```
+██╗   ██╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
+██║   ██║██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝╚██╗██╔╝
+██║   ██║██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝ 
+╚██╗ ██╔╝██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗ 
+ ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
+  ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝
 ```
 
-Install the required dependencies:
+---
+
+## ✨ Features
+
+- 🎮 **Interactive Terminal Interface**: Dynamic arrow-key menus built with `Questionary` and beautiful formatting powered by `Rich`.
+- 🔍 **Built-in Smart Search**: Find and download media directly by entering search keywords—no browser or copy-pasting links required.
+- ⚡ **1000+ Supported Sites**: Seamlessly download from YouTube, TikTok, Instagram (Reels & Posts), Twitter/X, Facebook, SoundCloud, Pinterest, Vimeo, Twitch, and direct MP4/MP3 URLs.
+- 🎬 **Multi-Tier Quality Profiles**:
+  - **Video (MP4)**:
+    - `Ultra Profile`: 4K / 1080p 60fps (Highest available quality with embedded audio).
+    - `Balanced Profile`: 720p / 480p (Optimal speed and file size).
+    - `Compact Profile`: 360p / 240p (Lightweight & low storage footprint).
+  - **Audio (MP3)**:
+    - `Studio Master`: 320 kbps MP3 with embedded metadata & ID3 tags.
+    - `Standard Fidelity`: 192 kbps MP3 (CD-quality audio).
+    - `Bandwidth Saver`: 128 kbps MP3 (Fast and compact).
+- 📦 **Multi-Stream Batch Pipeline**: Download lists of URLs in one pass—paste multiple URLs or load directly from `.txt` batch files.
+- 📊 **Real-Time Download Telemetry**: Live progress bars displaying speed (`MB/s`), total size, ETA, and status notifications.
+- ⚙️ **Persistent Configuration**: Saved custom download locations and quality presets that persist across sessions.
+- 🌍 **Unicode & Multi-Language Support**: Full preservation of Arabic, Japanese, Chinese, and emoji titles without filename corruption.
+- 🔌 **Zero External FFmpeg Setup**: Automatically bundles and leverages `imageio-ffmpeg` for background muxing and encoding.
+
+---
+
+## ⚡ 1-Command Instant Install & Run
+
+You can install and run VORTEX directly in a single command without even cloning the repository:
+
+### Method A: Install Globally via `pip` (Recommended)
+```bash
+pip install git+https://github.com/AbdulllrahmanDev/Vortex-CLI.git
+```
+Then run anytime from any terminal:
+```bash
+vortex
+```
+
+### Method B: Run Directly via `pipx` *(Like `npx` in Node)*
+If you have `pipx` installed, run it on the fly with zero setup:
+```bash
+pipx run git+https://github.com/AbdulllrahmanDev/Vortex-CLI.git
+```
+
+---
+
+## 🚀 Manual Quick Start (Git Clone)
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/AbdulllrahmanDev/Vortex-CLI.git
+cd Vortex-CLI
+```
+
+### 2. Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
+### 3. Launch VORTEX
+- **On Windows**: Double-click `start_cli.bat` or run:
+  ```powershell
+  python downloader_cli.py
+  ```
+- **On macOS / Linux**:
+  ```bash
+  python3 downloader_cli.py
+  ```
+
 ---
 
-### 2. Windows Installation (CMD & PowerShell)
+## 📥 Installation Guide
 
-#### Quick 1-Step Setup:
-Run the automatic global registration script:
+### Option 1: Run Globally via `vortex` Command (Recommended)
+
+#### 🪟 Windows Setup
+Run the global installation script to register `vortex` across your system:
 ```powershell
 python install_global.py
 ```
-This registers `vortex` across your local user `PATH` directories (`%USERPROFILE%\.local\bin`, `%APPDATA%\Roaming\npm`, etc.).
+*Alternatively, add the project folder to your Windows User `PATH` environment variable.*
 
-#### Manual Windows PATH Registration (Optional):
-1. Open PowerShell and run:
-```powershell
-[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$pwd", "User")
-```
-2. Or launch directly anytime by double-clicking:
-```bat
-start_cli.bat
-```
-
-Now you can open any **Command Prompt**, **PowerShell**, or **Windows Terminal** window and type:
+Once registered, simply open any **Command Prompt**, **PowerShell**, or **Windows Terminal** from anywhere and type:
 ```powershell
 vortex
 ```
 
----
+#### 🍎 macOS & 🐧 Linux Setup
 
-### 3. macOS & Linux Installation (Terminal, zsh, bash)
+1. **Create a global symlink**:
+   ```bash
+   chmod +x downloader_cli.py
+   sudo ln -sf "$(pwd)/downloader_cli.py" /usr/local/bin/vortex
+   ```
 
-To run `vortex` globally from any terminal window on **macOS (Terminal / iTerm2 / Warp)** or **Linux**:
+2. **Or create a shell alias** in your `~/.bashrc` or `~/.zshrc`:
+   ```bash
+   echo "alias vortex='python3 \"$(pwd)/downloader_cli.py\"'" >> ~/.zshrc
+   source ~/.zshrc
+   ```
 
-#### Method A: Create a Global Symbolic Link (Recommended)
-Make the runner executable and link it to `/usr/local/bin`:
-```bash
-# Make CLI executable
-chmod +x downloader_cli.py
-
-# Create a global symlink in /usr/local/bin (or ~/.local/bin)
-sudo ln -sf "$(pwd)/downloader_cli.py" /usr/local/bin/vortex
-```
-
-#### Method B: Add Alias to Shell Configuration (`.zshrc` or `.bashrc`)
-1. Open your shell configuration file:
-   - For **macOS (zsh - default)**:
-     ```bash
-     echo "alias vortex='python3 \"$(pwd)/downloader_cli.py\"'" >> ~/.zshrc
-     source ~/.zshrc
-     ```
-   - For **Linux / macOS (bash)**:
-     ```bash
-     echo "alias vortex='python3 \"$(pwd)/downloader_cli.py\"'" >> ~/.bashrc
-     source ~/.bashrc
-     ```
-
-Now you can invoke the CLI from any terminal directory:
-```bash
-vortex
-```
+Now you can run `vortex` globally from any folder in your terminal!
 
 ---
 
-## ◈ Usage & Command Reference
+## 🖥️ Usage Guide
 
-### 1. Interactive Wizard Mode (Recommended)
-Simply type `vortex` without arguments to launch the full interactive interface:
-```bash
-vortex
+### Interactive Mode (Default)
+
+Running `vortex` without arguments opens the full interactive dashboard:
+
+```
+? › Select Operational Mode:
+  ❯ [ 01 ] ◈ Direct URL Stream Ingestion
+    [ 02 ] ◈ Search Engine & Metadata Query
+    [ 03 ] ◈ Multi-Stream Batch Pipeline
+    [ 04 ] ◈ Browse Local Storage Directory
+    [ 05 ] ◈ System Preferences & Settings
+    [ 00 ] ◈ Exit
 ```
 
-### 2. Headless CLI Automation Mode
-Pass arguments directly for instant automated downloads:
+#### Step-by-Step Operations:
+1. **Direct URL Ingestion**: Paste any video or music link. VORTEX will inspect metadata, let you choose Video (MP4) or Audio (MP3), select your desired quality, and start downloading.
+2. **Search Engine & Metadata Query**: Type keywords (e.g. `podcast episode 1` or `chill lofi beats`). Choose from the candidate search results to download immediately.
+3. **Multi-Stream Batch Pipeline**: Download a queue of links simultaneously by pasting them or specifying a `.txt` file containing URLs.
+4. **Browse Local Storage**: Instantly open your downloads folder in your system's file explorer.
+5. **System Preferences**: Change your download path (Desktop, Downloads, custom path) or update default quality presets.
 
+---
+
+## ⚡ Headless CLI Automation
+
+For scripts, cron jobs, and power users, VORTEX supports full command-line arguments:
+
+### Common Commands & Examples
+
+#### 1. Download Video in High Quality (4K / 1080p)
 ```bash
-# Download video in highest quality (4K / 1080p)
-vortex "https://www.youtube.com/watch?v=..." --type video --quality high
+vortex "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --type video --quality high
+```
 
-# Search and download audio in Studio Master MP3 (320 kbps)
-vortex -s "lofi hip hop beats" --type audio --quality high
+#### 2. Search & Download Audio (320 kbps MP3)
+```bash
+vortex -s "lofi hip hop radio" --type audio --quality high
+```
 
-# Download balanced video to a custom output directory
-vortex "https://tiktok.com/@user/video/..." --type video --quality medium -o "/path/to/my_folder"
+#### 3. Save to a Custom Directory
+```bash
+vortex "https://www.tiktok.com/@user/video/123" --type video --quality medium -o "C:\MyVideos"
+```
 
-# Batch download all URLs listed in a text file
+#### 4. Batch Download from a Text File
+Create a `urls.txt` file with one link per line:
+```text
+https://www.youtube.com/watch?v=example1
+https://www.youtube.com/watch?v=example2
+# lines starting with # are ignored
+https://soundcloud.com/artist/track
+```
+Then run:
+```bash
 vortex --batch urls.txt --type video --quality medium
 ```
 
-### 3. Command-Line Arguments Reference
+---
 
-| Flag | Argument | Description | Default |
+## 📋 Command-Line Arguments Reference
+
+| Option | Flag | Description | Default |
 | :--- | :--- | :--- | :--- |
-| `target` | `[URL or query]` | Direct stream URL or search keyword | None |
-| `-s, --search` | `<query>` | Search keywords and download top match | None |
-| `-t, --type` | `video` \| `audio` | Media encoding format | `video` |
-| `-q, --quality`| `high` \| `medium` \| `low` | Quality resolution/bitrate profile | `high` |
-| `-o, --output` | `<directory>` | Output folder destination | Configured default |
-| `-b, --batch` | `<file.txt>` | Path to `.txt` list of URLs | None |
-| `-h, --help` | | Show help manual & exit | |
+| **Target** | `target` | Direct media URL or query to download | *Interactive mode* |
+| **Search** | `-s`, `--search` | Search keywords and download top result | `None` |
+| **Media Type** | `-t`, `--type` | Media format: `video` or `audio` | `video` |
+| **Quality** | `-q`, `--quality` | Quality profile: `high`, `medium`, `low` | `high` |
+| **Output Directory** | `-o`, `--output` | Target folder destination for downloads | Configured default |
+| **Batch File** | `-b`, `--batch` | Path to `.txt` file containing a list of URLs | `None` |
+| **Help** | `-h`, `--help` | Display command help and options | — |
 
 ---
 
-## 📂 Project Architecture
+## ⚙️ Configuration
 
+VORTEX stores preferences in `config.json` in the root directory. You can configure it via the interactive menu (`[ 05 ] ◈ System Preferences & Settings`) or by editing the file directly:
+
+```json
+{
+  "download_dir": "downloads",
+  "default_video_quality": "high",
+  "default_audio_quality": "high"
+}
 ```
-├── downloader_cli.py      # Core interactive CLI interface & rich terminal rendering
-├── downloader_engine.py   # High-speed yt-dlp + embedded FFmpeg transcoding engine
-├── config.py              # Persistent settings manager (directories, profiles)
-├── config.json            # User-saved preferences and storage path
-├── install_global.py      # Global PATH registration installer
-├── start_cli.bat          # 1-Click Windows execution launcher
-├── vortex.cmd             # Windows Command Prompt global runner
-├── requirements.txt       # Python dependency specifications
-├── README.md              # Documentation & quickstart guide
-└── downloads/             # Default destination directory for downloaded media
+
+- **`download_dir`**: The folder where downloaded media is saved. Can be relative (e.g. `downloads`) or an absolute path (e.g. `C:\Users\Name\Desktop`).
+- **`default_video_quality`**: Default video quality preset (`high`, `medium`, `low`).
+- **`default_audio_quality`**: Default audio quality preset (`high`, `medium`, `low`).
+
+---
+
+## 📁 Project Structure
+
+```text
+Vortex-CLI/
+├── downloader_cli.py       # Rich interactive CLI interface and command handler
+├── downloader_engine.py    # yt-dlp wrapper and FFmpeg stream processing engine
+├── config.py               # Configuration manager (JSON loader & updater)
+├── config.json             # Persistent user settings and preferences
+├── install_global.py       # Automatic global PATH registration utility
+├── start_cli.bat           # 1-Click launcher for Windows users
+├── vortex.cmd              # Windows CMD wrapper for global command execution
+├── requirements.txt        # Python dependency manifest
+├── README.md               # Documentation and guides
+└── downloads/              # Default destination directory for downloaded media
 ```
+
+---
+
+## 🔧 Troubleshooting & FAQ
+
+<details>
+<summary><b>1. "Python is not recognized as an internal or external command"</b></summary>
+Make sure Python is installed and that you checked <b>"Add Python to PATH"</b> during installation. You can test this by running <code>python --version</code> in your terminal.
+</details>
+
+<details>
+<summary><b>2. Do I need to manually install FFmpeg?</b></summary>
+No! VORTEX automatically detects and uses the bundled <code>imageio-ffmpeg</code> package, so audio extraction and video remuxing work out of the box on Windows, macOS, and Linux without extra setup.
+</details>
+
+<details>
+<summary><b>3. Download fails on certain sites</b></summary>
+Platforms frequently update their media streaming protocols. Update your <code>yt-dlp</code> core to the latest release:
+<pre><code>pip install --upgrade yt-dlp</code></pre>
+</details>
+
+<details>
+<summary><b>4. Character display issues in Windows Command Prompt</b></summary>
+VORTEX enforces UTF-8 output automatically. If you are using legacy Windows CMD, we recommend using <b>Windows Terminal</b> or <b>PowerShell</b> for the best visual experience and complete Unicode / emoji rendering.
+</details>
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
 ## 📄 License
-This project is open-source and available under the **MIT License**.
+
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+<div align="center">
+
+Made with ❤️ by [Abdulrahman](https://github.com/AbdulllrahmanDev)
+
+</div>
