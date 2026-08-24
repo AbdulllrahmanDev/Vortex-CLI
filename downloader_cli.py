@@ -192,6 +192,45 @@ def show_success_summary(result: dict):
     console.print()
     console.print(Panel(summary_table, title="[bold cyan]◈ TRANSMISSION SUCCESSFUL ◈[/bold cyan]", border_style="cyan"))
 
+def show_about_dialog():
+    """Display comprehensive information about VORTEX and the developer with portfolio links."""
+    import webbrowser
+
+    about_table = Table(box=box.ROUNDED, border_style="cyan", show_header=False, expand=True)
+    about_table.add_column("Section", style="bold cyan", width=18)
+    about_table.add_column("Details", style="bold white")
+
+    about_table.add_row("● Application", "VORTEX CLI — Next-Gen Ultra Media Engine")
+    about_table.add_row("● Version", "1.0.0 (Ultra Release)")
+    about_table.add_row("● Core Engine", "yt-dlp + High-Speed Stream Multiplexer + FFmpeg")
+    about_table.add_row("● Architecture", "Python 3.8+ / Standalone Binary")
+    about_table.add_row("● Compatibility", "YouTube • TikTok • Twitter/X • Facebook • Instagram • SoundCloud • Direct Streams")
+    about_table.add_row("● License", "MIT Open Source License")
+    about_table.add_row("● Developer", "Abdulrahman (AbdulllrahmanDev)")
+    about_table.add_row("● Portfolio", "https://mefolio.abdullrahman.workers.dev/#home")
+    about_table.add_row("● GitHub Repository", "https://github.com/AbdulllrahmanDev")
+
+    console.clear()
+    console.print(Align.center(BANNER))
+    console.print(Panel(about_table, title="[bold cyan]◈ ABOUT VORTEX & DEVELOPER PROFILE ◈[/bold cyan]", border_style="cyan"))
+
+    action = questionary.select(
+        "› Select Action:",
+        choices=[
+            Choice("🌐 Open Developer Portfolio in Web Browser", value="portfolio"),
+            Choice("🌐 Open GitHub Repository in Web Browser", value="github"),
+            Choice("‹ Return to Settings Menu", value="back"),
+        ],
+        style=custom_style
+    ).ask()
+
+    if action == "portfolio":
+        webbrowser.open("https://mefolio.abdullrahman.workers.dev/#home")
+        time.sleep(0.5)
+    elif action == "github":
+        webbrowser.open("https://github.com/AbdulllrahmanDev")
+        time.sleep(0.5)
+
 def settings_menu():
     """Interactive Settings and Customization menu."""
     while True:
@@ -215,6 +254,7 @@ def settings_menu():
                 Choice("◈ Modify Storage Target Directory", value="change_dir"),
                 Choice("◈ Set Default Video Quality Profile", value="change_v_quality"),
                 Choice("◈ Set Default Audio Bitrate Profile", value="change_a_quality"),
+                Choice("◈ About VORTEX & Developer Profile", value="about"),
                 Choice("◈ Restore Default Factory Configurations", value="reset"),
                 Choice("‹ Return to Main Menu", value="back"),
             ],
@@ -223,6 +263,10 @@ def settings_menu():
 
         if not choice or choice == "back":
             break
+
+        if choice == "about":
+            show_about_dialog()
+            continue
 
         if choice == "change_dir":
             desktop_dir = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
