@@ -288,7 +288,7 @@ def interactive_mode():
                 Choice("[ 03 ] ◈ Multi-Stream Batch Pipeline", value="batch"),
                 Choice("[ 04 ] ◈ Browse Local Storage Directory", value="open_folder"),
                 Choice("[ 05 ] ◈ System Preferences & Settings", value="settings"),
-                Choice("[ 00 ] ◈ Terminate Session", value="exit"),
+                Choice("[ 00 ] ◈ Exit", value="exit"),
             ],
             style=custom_style
         ).ask()
@@ -495,7 +495,7 @@ def interactive_mode():
                 choices=[
                     Choice("◈ Process Another Media Stream", value="again"),
                     Choice("◈ Reveal Asset in File Explorer", value="open"),
-                    Choice("◈ Terminate Session", value="exit"),
+                    Choice("◈ Exit", value="exit"),
                 ],
                 style=custom_style
             ).ask()
