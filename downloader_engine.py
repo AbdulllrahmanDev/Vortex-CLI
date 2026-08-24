@@ -4,6 +4,8 @@ import sys
 import shutil
 import urllib.parse
 from typing import Callable, Dict, List, Optional, Any
+import requests
+from bs4 import BeautifulSoup
 import imageio_ffmpeg
 import yt_dlp
 
@@ -125,6 +127,139 @@ def get_media_info(url_or_query: str) -> Dict[str, Any]:
             "ext": info.get("ext", "mp4"),
             "view_count": info.get("view_count", 0),
         }
+
+def extract_page_media(page_url: str) -> Dict[str, Any]:
+    """
+    Extract all media streams, songs, or video files from a given webpage or playlist URL.
+    Returns structured discovery summary with counts and metadata.
+    """
+    discovered_items: List[Dict[str, Any]] = []
+    seen_urls = set()
+    media_exts = {"mp3", "mp4", "m4a", "wav", "webm", "flac", "ogg", "aac", "opus", "mkv", "avi", "mov", "m3u8"}
+
+    # 1. Try yt-dlp flat extraction (for playlists like YouTube, SoundCloud sets, Bandcamp, etc.)
+    try:
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "extract_flat": "in_playlist",
+            "skip_download": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"]
+                }
+            }
+        }
+        if FFMPEG_DIR:
+            ydl_opts["ffmpeg_location"] = FFMPEG_DIR
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(page_url, download=False)
+            if info and "entries" in info and len(info["entries"]) > 0:
+                for entry in info["entries"]:
+                    if not entry:
+                        continue
+                    item_url = entry.get("url") or (f"https://www.youtube.com/watch?v={entry.get('id')}" if entry.get("id") else None)
+                    if not item_url or item_url in seen_urls:
+                        continue
+                    seen_urls.add(item_url)
+                    ext = entry.get("ext") or ("mp3" if "audio" in str(entry.get("ie_key", "")).lower() else "mp4")
+                    dur = entry.get("duration")
+                    discovered_items.append({
+                        "index": len(discovered_items) + 1,
+                        "title": entry.get("title") or entry.get("id") or f"Item {len(discovered_items) + 1}",
+                        "url": item_url,
+                        "ext": ext.lower(),
+                        "duration": dur,
+                        "duration_str": format_duration(dur),
+                        "source": "playlist"
+                    })
+    except Exception:
+        pass
+
+    # 2. Also crawl HTML of webpage via requests & BeautifulSoup (for audio/video hosting sites, albums, direct lists)
+    if (page_url.startswith("http://") or page_url.startswith("https://")) and len(discovered_items) <= 1:
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "ar,en-US,en;q=0.9",
+            }
+            resp = requests.get(page_url, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+
+                def add_item(raw_url: str, label: Optional[str] = None):
+                    if not raw_url or not isinstance(raw_url, str):
+                        return
+                    full_url = urllib.parse.urljoin(page_url, raw_url.strip())
+                    if full_url in seen_urls:
+                        return
+
+                    parsed = urllib.parse.urlparse(full_url)
+                    path = parsed.path.lower()
+                    ext_match = re.search(r'\.([a-z0-9]{3,4})(?:$|\?)', path)
+                    ext = ext_match.group(1).lower() if ext_match else ""
+
+                    if ext in media_exts or any(keyword in full_url.lower() for keyword in ["/audio/", "/video/", "download=true", "format=mp3"]):
+                        seen_urls.add(full_url)
+                        clean_ext = ext if ext in media_exts else "mp3"
+                        filename = os.path.basename(urllib.parse.unquote(parsed.path))
+                        clean_name = sanitize_filename(filename.rsplit('.', 1)[0]) if filename else ""
+                        
+                        clean_label = None
+                        if label:
+                            clean_label = re.sub(r'\s+', ' ', label).strip()
+                            clean_label = sanitize_filename(clean_label)
+                        
+                        title = clean_label if (clean_label and len(clean_label) > 1 and not clean_label.lower().startswith("download")) else (clean_name or f"Media_Track_{len(discovered_items) + 1}")
+                        
+                        discovered_items.append({
+                            "index": len(discovered_items) + 1,
+                            "title": title,
+                            "url": full_url,
+                            "ext": clean_ext,
+                            "duration": None,
+                            "duration_str": "N/A",
+                            "source": "webpage"
+                        })
+
+                # Check <a> tags
+                for a in soup.find_all("a", href=True):
+                    href = a["href"]
+                    text = a.get_text(strip=True) or a.get("title") or a.get("download")
+                    add_item(href, text)
+
+                # Check <audio> & <video> tags
+                for tag in soup.find_all(["audio", "video"]):
+                    lbl = tag.get("title") or tag.get("aria-label")
+                    if tag.get("src"):
+                        add_item(tag["src"], lbl)
+                    for src in tag.find_all("source", src=True):
+                        add_item(src["src"], lbl or src.get("title"))
+
+                # Regex scan for embedded media URLs in JS/text
+                regex_pattern = re.compile(
+                    r'https?://[^\s"\'<>]+\.(?:mp3|mp4|m4a|wav|webm|flac|ogg|aac|opus|mkv|m3u8)(?:\?[^\s"\'<>]*)?',
+                    re.IGNORECASE
+                )
+                for found_url in regex_pattern.findall(resp.text):
+                    add_item(found_url)
+        except Exception:
+            pass
+
+    # Calculate format counts
+    format_counts: Dict[str, int] = {}
+    for it in discovered_items:
+        f_ext = it.get("ext", "other").upper()
+        format_counts[f_ext] = format_counts.get(f_ext, 0) + 1
+
+    return {
+        "url": page_url,
+        "total_count": len(discovered_items),
+        "format_counts": format_counts,
+        "items": discovered_items
+    }
 
 from config import get_download_dir
 

@@ -34,6 +34,7 @@ from downloader_engine import (
     MediaDownloader,
     search_media,
     get_media_info,
+    extract_page_media,
     format_duration,
     format_size,
     sanitize_filename
@@ -293,6 +294,173 @@ def settings_menu():
                 console.print("[bold cyan]✔ System configurations restored to defaults.[/bold cyan]")
                 time.sleep(1.2)
 
+def handle_page_sniffer(downloader: MediaDownloader, initial_url: Optional[str] = None):
+    """Scan and sniff a webpage or playlist for all media assets, then allow selective or full downloads."""
+    target_page = initial_url
+    if not target_page:
+        target_page = questionary.text(
+            "› Enter Webpage or Playlist URL:",
+            validate=lambda val: True if len(val.strip()) > 0 else "Please enter a valid webpage URL",
+            style=custom_style
+        ).ask()
+
+    if not target_page:
+        return
+
+    target_page = target_page.strip()
+
+    with console.status("[bold cyan]Scanning webpage & sniffing media streams...[/bold cyan]", spinner="dots"):
+        discovery = extract_page_media(target_page)
+
+    total_items = discovery.get("total_count", 0)
+    items = discovery.get("items", [])
+
+    if total_items == 0:
+        console.print(f"\n[bold red]✖ No media streams or audio/video files were detected on:[/bold red] {target_page}")
+        console.print("[dim]Tip: Ensure the page contains direct audio/video elements, mp3/mp4 links, or supported playlist streams.[/dim]\n")
+        questionary.press_any_key_to_continue().ask()
+        return
+
+    # Build summary string for formats
+    format_counts = discovery.get("format_counts", {})
+    fmt_summary = ", ".join([f"[bold cyan]{cnt} {fmt}[/bold cyan]" for fmt, cnt in format_counts.items()])
+
+    console.print(f"\n[bold green]✔ Sniffer Scan Complete:[/bold green] Found [bold white]{total_items}[/bold white] media asset(s) [{fmt_summary}]\n")
+
+    # Render Discovery Table
+    table = Table(box=box.ROUNDED, border_style="cyan", expand=True)
+    table.add_column("#", style="dim white", width=4)
+    table.add_column("Media Title / Asset Name", style="bold white")
+    table.add_column("Format", style="bold cyan", width=10)
+    table.add_column("Duration", style="dim cyan", width=12)
+    table.add_column("Source", style="dim", width=12)
+
+    preview_limit = 25
+    for idx, it in enumerate(items[:preview_limit], 1):
+        table.add_row(
+            str(idx),
+            it.get("title", "Unknown"),
+            it.get("ext", "N/A").upper(),
+            it.get("duration_str", "N/A"),
+            it.get("source", "webpage").upper()
+        )
+
+    if total_items > preview_limit:
+        table.add_row("...", f"... and {total_items - preview_limit} additional media items", "...", "...", "...")
+
+    console.print(Panel(table, title="[bold cyan]◈ DISCOVERED WEBPAGE MEDIA ASSETS ◈[/bold cyan]", border_style="cyan"))
+
+    # Actions Menu
+    action_choice = questionary.select(
+        "› Select Ingestion Action:",
+        choices=[
+            Choice(f"⬇️ Download ALL Discovered Media ({total_items} items)", value="all"),
+            Choice("☑️ Select Specific Multiple Items to Download...", value="select_multiple"),
+            Choice("▶️ Select a Single Item to Download...", value="select_single"),
+            Choice("‹ Cancel & Return", value="cancel"),
+        ],
+        style=custom_style
+    ).ask()
+
+    if not action_choice or action_choice == "cancel":
+        return
+
+    selected_items = []
+    if action_choice == "all":
+        selected_items = items
+    elif action_choice == "select_single":
+        single_choices = [
+            Choice(f"[{it.get('ext', 'N/A').upper()}] {it.get('title', 'Item')} ({it.get('duration_str', 'N/A')})", value=it)
+            for it in items
+        ]
+        single_choices.append(Choice("‹ Return / Cancel", value=None))
+        chosen_single = questionary.select(
+            "› Choose the item to download:",
+            choices=single_choices,
+            style=custom_style
+        ).ask()
+        if not chosen_single:
+            return
+        selected_items = [chosen_single]
+    elif action_choice == "select_multiple":
+        multi_choices = [
+            Choice(f"[{it.get('ext', 'N/A').upper()}] {it.get('title', 'Item')}", value=it)
+            for it in items
+        ]
+        chosen_multi = questionary.checkbox(
+            "› Select Items with Space, press Enter when done:",
+            choices=multi_choices,
+            style=custom_style
+        ).ask()
+        if not chosen_multi:
+            return
+        selected_items = chosen_multi
+
+    # Format / Conversion Selection
+    format_choice = questionary.select(
+        "› Select Output Encoding Format:",
+        choices=[
+            Choice("◈ Auto / Original Stream Format (No Conversion)", value="original"),
+            Choice("♬ Transcode All to MP3 Audio (Studio Quality)", value="audio"),
+            Choice("▶ Transcode All to MP4 Video (High Definition)", value="video"),
+        ],
+        style=custom_style
+    ).ask()
+
+    if not format_choice:
+        return
+
+    quality_choice = questionary.select(
+        "› Select Quality Profile:",
+        choices=[
+            Choice("◆ Maximum Quality (4K / 1080p / 320 kbps)", value="high"),
+            Choice("◇ Balanced Profile (720p / 192 kbps)", value="medium"),
+            Choice("○ Fast / Compact Profile (360p / 128 kbps)", value="low"),
+        ],
+        style=custom_style
+    ).ask()
+
+    if not quality_choice:
+        return
+
+    # Execute Batch Pipeline
+    console.print(f"\n[bold cyan]Starting Download Pipeline ({len(selected_items)} assets)...[/bold cyan]\n")
+    success_count = 0
+
+    for idx, item in enumerate(selected_items, 1):
+        item_title = item.get("title", "Media Item")
+        item_url = item.get("url")
+        item_ext = item.get("ext", "mp4").lower()
+        
+        # Decide media type
+        if format_choice == "original":
+            target_type = "audio" if item_ext in ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus"] else "video"
+        else:
+            target_type = format_choice
+
+        console.print(f"\n[bold cyan]─── Asset [{idx}/{len(selected_items)}]: {item_title} [{item_ext.upper()}] ───[/bold cyan]")
+        res = download_with_progress(downloader, item_url, target_type, quality_choice)
+        if res:
+            show_success_summary(res)
+            success_count += 1
+
+    console.print(f"\n[bold green]✔ Webpage Sniffer Completed: {success_count}/{len(selected_items)} assets saved successfully.[/bold green]\n")
+    
+    post_action = questionary.select(
+        "› Operational Follow-Up:",
+        choices=[
+            Choice("◈ Reveal Storage Directory in File Explorer", value="open"),
+            Choice("◈ Return to Main Menu", value="menu"),
+        ],
+        style=custom_style
+    ).ask()
+
+    if post_action == "open":
+        target_folder = downloader.output_dir
+        if sys.platform == "win32":
+            os.startfile(target_folder)
+        time.sleep(0.8)
+
 def interactive_mode():
     while True:
         current_save_dir = get_download_dir()
@@ -303,10 +471,11 @@ def interactive_mode():
             "› Select Operational Mode:",
             choices=[
                 Choice("[ 01 ] ◈ Direct URL Stream Ingestion", value="url"),
-                Choice("[ 02 ] ◈ Search Engine & Metadata Query", value="search"),
-                Choice("[ 03 ] ◈ Multi-Stream Batch Pipeline", value="batch"),
-                Choice("[ 04 ] ◈ Browse Local Storage Directory", value="open_folder"),
-                Choice("[ 05 ] ◈ System Preferences & Settings", value="settings"),
+                Choice("[ 02 ] ◈ Webpage Media Sniffer & Playlist Extractor", value="sniffer"),
+                Choice("[ 03 ] ◈ Search Engine & Metadata Query", value="search"),
+                Choice("[ 04 ] ◈ Multi-Stream Batch Pipeline", value="batch"),
+                Choice("[ 05 ] ◈ Browse Local Storage Directory", value="open_folder"),
+                Choice("[ 06 ] ◈ System Preferences & Settings", value="settings"),
                 Choice("[ 00 ] ◈ Exit", value="exit"),
             ],
             style=custom_style
@@ -321,6 +490,10 @@ def interactive_mode():
 
         if main_choice == "settings":
             settings_menu()
+            continue
+
+        if main_choice == "sniffer":
+            handle_page_sniffer(downloader)
             continue
 
         if main_choice == "open_folder":
@@ -536,6 +709,7 @@ def main():
         description="VORTEX Media Engine - High-speed search and downloader for video and audio."
     )
     parser.add_argument("target", nargs="?", help="URL or search query to download directly.")
+    parser.add_argument("-p", "--page", "--sniff", help="Webpage or playlist URL to sniff and extract all media files.")
     parser.add_argument("-s", "--search", help="Search keywords and download top result directly.")
     parser.add_argument("-t", "--type", choices=["video", "audio"], default="video", help="Media format (video or audio).")
     parser.add_argument("-q", "--quality", choices=["high", "medium", "low"], default="high", help="Quality level (high, medium, low).")
@@ -544,14 +718,19 @@ def main():
 
     args = parser.parse_args()
 
+    output_directory = args.output if args.output else get_download_dir()
+    downloader = MediaDownloader(output_dir=output_directory)
+
+    # Webpage Sniffer mode via CLI flag
+    if args.page:
+        handle_page_sniffer(downloader, args.page)
+        return
+
     # If no arguments given, launch the interactive VORTEX experience
     if not args.target and not args.search and not args.batch:
         interactive_mode()
         return
 
-    output_directory = args.output if args.output else get_download_dir()
-    downloader = MediaDownloader(output_dir=output_directory)
-    
     # Batch file mode
     if args.batch:
         if not os.path.exists(args.batch):
