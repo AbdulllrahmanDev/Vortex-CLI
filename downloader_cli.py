@@ -49,21 +49,32 @@ from config import (
 )
 
 from prompt_toolkit.keys import Keys
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 import questionary
 from questionary import Choice, Style
 
-# Patch Questionary to bind ESC key to cancel/step back without quitting CLI
+# Patch Questionary to bind ESC and Ctrl+C keys to cancel/step back without quitting CLI
 _orig_question_init = questionary.Question.__init__
 
 def _patched_question_init(self, application, *args, **kwargs):
     _orig_question_init(self, application, *args, **kwargs)
-    if hasattr(application, "key_bindings") and application.key_bindings:
-        try:
-            @application.key_bindings.add(Keys.Escape, eager=True)
-            def _handle_escape(event):
-                event.app.exit(result=None)
-        except Exception:
-            pass
+    try:
+        esc_kb = KeyBindings()
+        
+        @esc_kb.add(Keys.Escape, eager=True)
+        def _handle_escape(event):
+            event.app.exit(result=None)
+            
+        @esc_kb.add("c-c", eager=True)
+        def _handle_ctrl_c(event):
+            event.app.exit(result=None)
+            
+        if hasattr(application, "key_bindings") and application.key_bindings is not None:
+            application.key_bindings = merge_key_bindings([esc_kb, application.key_bindings])
+        else:
+            application.key_bindings = esc_kb
+    except Exception:
+        pass
 
 questionary.Question.__init__ = _patched_question_init
 
