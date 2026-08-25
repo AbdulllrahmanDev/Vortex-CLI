@@ -142,12 +142,13 @@ Running `vortex` without arguments opens the full interactive dashboard:
 
 ```
 ? › Select Operational Mode:
-  ❯ [ 01 ] ◈ Direct URL Stream Ingestion
-    [ 02 ] ◈ Search Engine & Metadata Query
-    [ 03 ] ◈ Multi-Stream Batch Pipeline
-    [ 04 ] ◈ Browse Local Storage Directory
-    [ 05 ] ◈ System Preferences & Settings
-    [ 00 ] ◈ Exit
+  ❯ ◈ Direct URL Stream Ingestion
+    ◈ Webpage Media Sniffer & Playlist Extractor
+    ◈ Search Engine & Metadata Query
+    ◈ Multi-Stream Batch Pipeline
+    ◈ Browse Local Storage Directory
+    ◈ System Preferences & Settings
+    ✕ Exit
 ```
 
 #### Step-by-Step Operations:

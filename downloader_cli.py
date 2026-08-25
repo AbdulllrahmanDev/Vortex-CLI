@@ -217,8 +217,8 @@ def show_about_dialog():
     action = questionary.select(
         "› Select Action:",
         choices=[
-            Choice("🌐 Open Developer Portfolio in Web Browser", value="portfolio"),
-            Choice("🌐 Open GitHub Repository in Web Browser", value="github"),
+            Choice("◈ Open Developer Portfolio in Web Browser", value="portfolio"),
+            Choice("◈ Open GitHub Repository in Web Browser", value="github"),
             Choice("‹ Return to Settings Menu", value="back"),
         ],
         style=custom_style
@@ -275,10 +275,10 @@ def settings_menu():
             dir_choice = questionary.select(
                 "› Select Destination Standard:",
                 choices=[
-                    Choice(f"◈ Project Storage: {DEFAULT_DOWNLOADS_DIR}", value=DEFAULT_DOWNLOADS_DIR),
-                    Choice(f"◈ Desktop: {desktop_dir}", value=desktop_dir),
-                    Choice(f"◈ User Downloads: {win_downloads_dir}", value=win_downloads_dir),
-                    Choice("◈ Specify Custom Absolute/Relative Path...", value="custom"),
+                    Choice(f"◈ Project Storage ({DEFAULT_DOWNLOADS_DIR})", value=DEFAULT_DOWNLOADS_DIR),
+                    Choice(f"◈ Desktop ({desktop_dir})", value=desktop_dir),
+                    Choice(f"◈ User Downloads ({win_downloads_dir})", value=win_downloads_dir),
+                    Choice("◈ Specify Custom Folder Path...", value="custom"),
                     Choice("‹ Cancel", value="cancel"),
                 ],
                 style=custom_style
@@ -286,12 +286,14 @@ def settings_menu():
 
             if dir_choice and dir_choice != "cancel":
                 if dir_choice == "custom":
-                    custom_path = questionary.text(
-                        "› Enter Target Folder Path:",
-                        validate=lambda val: True if len(val.strip()) > 0 else "Path cannot be empty",
-                        style=custom_style
-                    ).ask()
-                    if custom_path:
+                    try:
+                        custom_path = questionary.text(
+                            "› Enter Target Folder Path:",
+                            style=custom_style
+                        ).ask()
+                    except KeyboardInterrupt:
+                        custom_path = None
+                    if custom_path and custom_path.strip():
                         set_download_dir(custom_path)
                         console.print(f"[bold cyan]✔ Storage destination registered:[/bold cyan] {get_download_dir()}")
                         time.sleep(1.2)
@@ -342,13 +344,15 @@ def handle_page_sniffer(downloader: MediaDownloader, initial_url: Optional[str] 
     """Scan and sniff a webpage or playlist for all media assets, then allow selective or full downloads."""
     target_page = initial_url
     if not target_page:
-        target_page = questionary.text(
-            "› Enter Webpage or Playlist URL:",
-            validate=lambda val: True if len(val.strip()) > 0 else "Please enter a valid webpage URL",
-            style=custom_style
-        ).ask()
+        try:
+            target_page = questionary.text(
+                "› Enter Webpage or Playlist URL:",
+                style=custom_style
+            ).ask()
+        except KeyboardInterrupt:
+            target_page = None
 
-    if not target_page:
+    if not target_page or not target_page.strip():
         return
 
     target_page = target_page.strip()
@@ -398,9 +402,9 @@ def handle_page_sniffer(downloader: MediaDownloader, initial_url: Optional[str] 
     action_choice = questionary.select(
         "› Select Ingestion Action:",
         choices=[
-            Choice(f"⬇️ Download ALL Discovered Media ({total_items} items)", value="all"),
-            Choice("☑️ Select Specific Multiple Items to Download...", value="select_multiple"),
-            Choice("▶️ Select a Single Item to Download...", value="select_single"),
+            Choice(f"◈ Download ALL Discovered Media ({total_items} items)", value="all"),
+            Choice("◈ Select Specific Multiple Items to Download...", value="select_multiple"),
+            Choice("◈ Select a Single Item to Download...", value="select_single"),
             Choice("‹ Cancel & Return", value="cancel"),
         ],
         style=custom_style
@@ -494,7 +498,7 @@ def handle_page_sniffer(downloader: MediaDownloader, initial_url: Optional[str] 
         "› Operational Follow-Up:",
         choices=[
             Choice("◈ Reveal Storage Directory in File Explorer", value="open"),
-            Choice("◈ Return to Main Menu", value="menu"),
+            Choice("‹ Return to Main Menu", value="menu"),
         ],
         style=custom_style
     ).ask()
@@ -514,13 +518,13 @@ def interactive_mode():
         main_choice = questionary.select(
             "› Select Operational Mode:",
             choices=[
-                Choice("[ 01 ] ◈ Direct URL Stream Ingestion", value="url"),
-                Choice("[ 02 ] ◈ Webpage Media Sniffer & Playlist Extractor", value="sniffer"),
-                Choice("[ 03 ] ◈ Search Engine & Metadata Query", value="search"),
-                Choice("[ 04 ] ◈ Multi-Stream Batch Pipeline", value="batch"),
-                Choice("[ 05 ] ◈ Browse Local Storage Directory", value="open_folder"),
-                Choice("[ 06 ] ◈ System Preferences & Settings", value="settings"),
-                Choice("[ 00 ] ◈ Exit", value="exit"),
+                Choice("◈ Direct URL Stream Ingestion", value="url"),
+                Choice("◈ Webpage Media Sniffer & Playlist Extractor", value="sniffer"),
+                Choice("◈ Search Engine & Metadata Query", value="search"),
+                Choice("◈ Multi-Stream Batch Pipeline", value="batch"),
+                Choice("◈ Browse Local Storage Directory", value="open_folder"),
+                Choice("◈ System Preferences & Settings", value="settings"),
+                Choice("✕ Exit", value="exit"),
             ],
             style=custom_style
         ).ask()
@@ -551,13 +555,15 @@ def interactive_mode():
         target_url = None
 
         if main_choice == "url":
-            target_url = questionary.text(
-                "› Enter Target Media URL:",
-                validate=lambda val: True if len(val.strip()) > 0 else "Please provide a valid stream link",
-                style=custom_style
-            ).ask()
+            try:
+                target_url = questionary.text(
+                    "› Enter Target Media URL:",
+                    style=custom_style
+                ).ask()
+            except KeyboardInterrupt:
+                target_url = None
 
-            if not target_url:
+            if not target_url or not target_url.strip():
                 continue
 
             with console.status("[bold cyan]Analyzing remote media headers...[/bold cyan]", spinner="dots"):
@@ -568,13 +574,15 @@ def interactive_mode():
                     console.print("[dim cyan]Note: Direct stream extraction will proceed during transmission.[/dim cyan]")
 
         elif main_choice == "search":
-            query = questionary.text(
-                "› Enter Search Query Keywords:",
-                validate=lambda val: True if len(val.strip()) > 0 else "Query cannot be blank",
-                style=custom_style
-            ).ask()
+            try:
+                query = questionary.text(
+                    "› Enter Search Query Keywords:",
+                    style=custom_style
+                ).ask()
+            except KeyboardInterrupt:
+                query = None
 
-            if not query:
+            if not query or not query.strip():
                 continue
 
             with console.status(f"[bold cyan]Querying stream repositories for '[white]{query}[/white]'...[/bold cyan]", spinner="dots"):
@@ -623,19 +631,32 @@ def interactive_mode():
 
             url_list = []
             if batch_choice == "paste":
-                raw_input = questionary.text(
-                    "› Paste Target URLs (comma or line separated):",
-                    style=custom_style
-                ).ask()
-                if raw_input:
-                    url_list = [u.strip() for u in raw_input.replace("\n", ",").split(",") if u.strip()]
+                try:
+                    raw_input = questionary.text(
+                        "› Paste Target URLs (comma or line separated):",
+                        style=custom_style
+                    ).ask()
+                except KeyboardInterrupt:
+                    raw_input = None
+
+                if not raw_input or not raw_input.strip():
+                    continue
+
+                url_list = [u.strip() for u in raw_input.replace("\n", ",").split(",") if u.strip()]
             elif batch_choice == "file":
-                filepath = questionary.text(
-                    "› Enter File Path (.txt):",
-                    default="urls.txt",
-                    style=custom_style
-                ).ask()
-                if filepath and os.path.exists(filepath):
+                try:
+                    filepath = questionary.text(
+                        "› Enter File Path (.txt):",
+                        default="urls.txt",
+                        style=custom_style
+                    ).ask()
+                except KeyboardInterrupt:
+                    filepath = None
+
+                if not filepath or not filepath.strip():
+                    continue
+
+                if os.path.exists(filepath):
                     with open(filepath, "r", encoding="utf-8") as f:
                         url_list = [line.strip() for line in f if line.strip() and not line.startswith("#")]
                 else:
@@ -734,7 +755,7 @@ def interactive_mode():
                 choices=[
                     Choice("◈ Process Another Media Stream", value="again"),
                     Choice("◈ Reveal Asset in File Explorer", value="open"),
-                    Choice("◈ Exit", value="exit"),
+                    Choice("✕ Exit", value="exit"),
                 ],
                 style=custom_style
             ).ask()
