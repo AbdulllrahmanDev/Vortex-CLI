@@ -1,6 +1,6 @@
 {
-    "download_dir": "C:\\Users\\Drafter-5\\Desktop\\Vortex Loader\\downloads",
+    "download_dir": "downloads",
     "default_type": "video",
-    "default_video_quality": "medium",
+    "default_video_quality": "high",
     "default_audio_quality": "high"
 }

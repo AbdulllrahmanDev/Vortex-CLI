@@ -40,13 +40,23 @@ def get_download_dir() -> str:
     """Get the currently configured downloads directory."""
     config = load_config()
     target_dir = config.get("download_dir", DEFAULT_DOWNLOADS_DIR)
-    os.makedirs(target_dir, exist_ok=True)
-    return target_dir
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        return target_dir
+    except Exception:
+        os.makedirs(DEFAULT_DOWNLOADS_DIR, exist_ok=True)
+        config["download_dir"] = DEFAULT_DOWNLOADS_DIR
+        save_config(config)
+        return DEFAULT_DOWNLOADS_DIR
 
 def set_download_dir(path: str) -> str:
     """Update and persist new download directory."""
     abs_path = os.path.abspath(path.strip().strip('"').strip("'"))
-    os.makedirs(abs_path, exist_ok=True)
+    try:
+        os.makedirs(abs_path, exist_ok=True)
+    except Exception:
+        abs_path = DEFAULT_DOWNLOADS_DIR
+        os.makedirs(abs_path, exist_ok=True)
     config = load_config()
     config["download_dir"] = abs_path
     save_config(config)

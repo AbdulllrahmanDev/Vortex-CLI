@@ -1,3 +1,3 @@
 @echo off
 chcp 65001 >nul
-python "C:\Users\Drafter-5\Desktop\Vortex Loader\downloader_cli.py" %*
+"C:\Users\ptdng\AppData\Local\Programs\Python\Python314\python.exe" "D:\Projects\CLI\Vortex-CLI\downloader_cli.py" %*
