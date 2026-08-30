@@ -148,6 +148,119 @@ def set_download_dir(path: str) -> str:
     save_config(config)
     return abs_path
 
+VERSION = "1.0.0"
+GITHUB_REPO_RAW = "https://raw.githubusercontent.com/AbdulllrahmanDev/Vortex-CLI/main/pyproject.toml"
+
+def check_for_updates() -> Dict[str, Any]:
+    """
+    Check GitHub repository for newer version or commits.
+    Returns a dict with:
+        has_update: bool
+        current_version: str
+        remote_version: Optional[str]
+        method: 'git' | 'pip' | 'unknown'
+        details: str
+    """
+    import urllib.request
+    import re
+    import subprocess
+    import shutil
+
+    current = VERSION
+    is_git_repo = os.path.exists(os.path.join(PROJECT_DIR, ".git"))
+
+    # 1. If in a git repository with git CLI available, check remote git commits
+    if is_git_repo and shutil.which("git"):
+        try:
+            subprocess.run(
+                ["git", "fetch", "origin", "main"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                timeout=12
+            )
+            local_hash = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=5
+            ).stdout.strip()
+            remote_hash = subprocess.run(
+                ["git", "rev-parse", "origin/main"],
+                cwd=PROJECT_DIR,
+                capture_output=True,
+                text=True,
+                timeout=5
+            ).stdout.strip()
+
+            if local_hash and remote_hash:
+                if local_hash != remote_hash:
+                    return {
+                        "has_update": True,
+                        "current_version": current,
+                        "remote_version": "Latest Commit (origin/main)",
+                        "method": "git",
+                        "details": "New codebase changes detected on GitHub origin/main."
+                    }
+                else:
+                    return {
+                        "has_update": False,
+                        "current_version": current,
+                        "remote_version": current,
+                        "method": "git",
+                        "details": "Local repository is fully synchronized with GitHub."
+                    }
+        except Exception:
+            pass
+
+    # 2. Check remote pyproject.toml via GitHub raw HTTP request
+    try:
+        req = urllib.request.Request(
+            GITHUB_REPO_RAW,
+            headers={"User-Agent": "VORTEX-CLI-Updater"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
+            content = response.read().decode("utf-8")
+            match = re.search(r'version\s*=\s*["\']([^"\']+)["\']', content)
+            if match:
+                remote_ver = match.group(1).strip()
+                
+                def parse_version(v: str):
+                    return [int(x) for x in re.findall(r'\d+', v)]
+
+                if parse_version(remote_ver) > parse_version(current):
+                    return {
+                        "has_update": True,
+                        "current_version": current,
+                        "remote_version": remote_ver,
+                        "method": "pip",
+                        "details": f"New release v{remote_ver} is available on GitHub."
+                    }
+                else:
+                    return {
+                        "has_update": False,
+                        "current_version": current,
+                        "remote_version": remote_ver,
+                        "method": "pip",
+                        "details": f"You are running the latest version (v{current})."
+                    }
+    except Exception as e:
+        return {
+            "has_update": False,
+            "current_version": current,
+            "remote_version": current,
+            "method": "unknown",
+            "details": f"Checked offline/locally. Current version: v{current}"
+        }
+
+    return {
+        "has_update": False,
+        "current_version": current,
+        "remote_version": current,
+        "method": "unknown",
+        "details": f"Running v{current}."
+    }
+
 def reset_config() -> Dict[str, Any]:
     """Reset configuration to default values."""
     save_config(DEFAULT_CONFIG)

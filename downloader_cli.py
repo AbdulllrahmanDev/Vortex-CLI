@@ -46,6 +46,9 @@ from config import (
     set_download_dir,
     reset_config,
     get_suggested_download_dirs,
+    check_for_updates,
+    VERSION,
+    PROJECT_DIR,
     DEFAULT_DOWNLOADS_DIR
 )
 
@@ -102,7 +105,7 @@ BANNER = """[bold cyan]
 ╚██╗ ██╔╝██║   ██║██╔══██╗   ██║   ██╔══╝   ██╔██╗ 
  ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
   ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝[/bold cyan]
-      [dim cyan]✦ NEXT-GEN ULTRA MEDIA ENGINE & STREAM GRABBER ✦[/dim cyan]
+  [dim cyan]✦ NEXT-GEN ULTRA MEDIA ENGINE & STREAM GRABBER ✦[/dim cyan]
 """
 
 def print_header():
@@ -244,23 +247,64 @@ def show_about_dialog():
         time.sleep(0.5)
 
 def handle_system_update():
-    """Check for updates and perform automatic upgrade of VORTEX and yt-dlp core engine."""
+    """Check GitHub for updates. If versions match, inform user. If a new version exists, proceed with update."""
     import subprocess
     import shutil
 
     console.clear()
     console.print(Align.center(BANNER))
 
-    update_table = Table(box=box.ROUNDED, border_style="cyan", show_header=False, expand=True)
-    update_table.add_column("Component", style="bold cyan", width=22)
-    update_table.add_column("Description", style="bold white")
-    update_table.add_row("● Application", "VORTEX CLI Codebase & Interface")
-    update_table.add_row("● Core Engine", "yt-dlp Extraction & Platform Protocol Engine")
-    update_table.add_row("● Multimedia Modules", "imageio-ffmpeg & Network Handlers")
-    console.print(Panel(update_table, title="[bold cyan]◈ VORTEX SYSTEM UPDATE MANAGER ◈[/bold cyan]", border_style="cyan"))
+    with console.status("[bold cyan]Connecting to GitHub & checking for new releases...[/bold cyan]", spinner="dots"):
+        update_info = check_for_updates()
 
+    current_v = update_info.get("current_version", VERSION)
+    remote_v = update_info.get("remote_version") or current_v
+    has_update = update_info.get("has_update", False)
+    details = update_info.get("details", "")
+
+    table = Table(box=box.ROUNDED, border_style="cyan", show_header=False, expand=True)
+    table.add_column("Property", style="bold cyan", width=22)
+    table.add_column("Status", style="bold white")
+    table.add_row("● Installed Version", f"[bold white]v{current_v}[/bold white]")
+    table.add_row("● Latest GitHub Version", f"[bold cyan]v{remote_v}[/bold cyan]" if not remote_v.startswith("v") and not remote_v.startswith("Latest") else f"[bold cyan]{remote_v}[/bold cyan]")
+    table.add_row("● Synchronization Status", "[bold green]Up to Date ✔[/bold green]" if not has_update else "[bold yellow]★ New Update Available[/bold yellow]")
+    table.add_row("● Status Details", details)
+
+    console.print(Panel(table, title="[bold cyan]◈ VORTEX VERSION & UPDATE MANAGER ◈[/bold cyan]", border_style="cyan"))
+
+    # Case 1: Already on the latest version
+    if not has_update:
+        console.print("\n[bold green]✔ You are already using the latest version of VORTEX! No update required.[/bold green]\n")
+        
+        check_engine = questionary.confirm(
+            "› Would you like to check & refresh the media extraction engine (yt-dlp) anyway?",
+            default=False,
+            style=custom_style
+        ).ask()
+
+        if check_engine:
+            py_exec = sys.executable
+            with console.status("[bold cyan]Checking yt-dlp core media engine...[/bold cyan]", spinner="dots"):
+                try:
+                    res = subprocess.run(
+                        [py_exec, "-m", "pip", "install", "--upgrade", "yt-dlp"],
+                        capture_output=True,
+                        text=True,
+                        timeout=60
+                    )
+                    if res.returncode == 0:
+                        console.print("[bold green]✔ Media extraction engine (yt-dlp) is up-to-date.[/bold green]\n")
+                    else:
+                        console.print(f"[bold yellow]⚠ Engine check output:[/bold yellow] {res.stdout.strip() or res.stderr.strip()}\n")
+                except Exception as e:
+                    console.print(f"[bold red]✖ Error updating yt-dlp:[/bold red] {e}\n")
+            questionary.press_any_key_to_continue().ask()
+        return
+
+    # Case 2: Newer version is available on GitHub
+    console.print(f"\n[bold yellow]★ New release detected on GitHub: {remote_v} (Current: v{current_v})[/bold yellow]\n")
     confirm = questionary.confirm(
-        "› Start full system & engine upgrade check now?",
+        f"› Start downloading and applying update now?",
         default=True,
         style=custom_style
     ).ask()
@@ -280,26 +324,24 @@ def handle_system_update():
                 timeout=60
             )
             if res.returncode == 0:
-                console.print("[bold green]✔ yt-dlp Core Engine is up-to-date.[/bold green]")
-            else:
-                console.print(f"[bold yellow]⚠ Engine update note:[/bold yellow] {res.stderr.strip() or res.stdout.strip()}")
+                console.print("[bold green]✔ Core media engine (yt-dlp) upgraded.[/bold green]")
         except Exception as e:
             console.print(f"[bold red]✖ Error updating yt-dlp:[/bold red] {e}")
 
     # 2. Update VORTEX Application Codebase (Git or Pip)
-    with console.status("[bold cyan]Checking for VORTEX Application updates...[/bold cyan]", spinner="dots"):
-        is_git_repo = os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".git"))
-        if is_git_repo and shutil.which("git"):
+    with console.status(f"[bold cyan]Upgrading VORTEX to {remote_v}...[/bold cyan]", spinner="dots"):
+        method = update_info.get("method", "git")
+        if method == "git" and shutil.which("git"):
             try:
                 git_res = subprocess.run(
                     ["git", "pull", "origin", "main"],
-                    cwd=os.path.dirname(os.path.abspath(__file__)),
+                    cwd=PROJECT_DIR,
                     capture_output=True,
                     text=True,
                     timeout=45
                 )
                 if git_res.returncode == 0:
-                    console.print(f"[bold green]✔ Git Repository Synchronized:[/bold green]\n[dim]{git_res.stdout.strip()}[/dim]")
+                    console.print(f"[bold green]✔ VORTEX updated successfully via Git:[/bold green]\n[dim]{git_res.stdout.strip()}[/dim]")
                 else:
                     console.print(f"[bold yellow]⚠ Git notice:[/bold yellow] {git_res.stderr.strip() or git_res.stdout.strip()}")
             except Exception as e:
@@ -313,13 +355,13 @@ def handle_system_update():
                     timeout=90
                 )
                 if pip_res.returncode == 0:
-                    console.print("[bold green]✔ VORTEX Package updated to latest release from GitHub.[/bold green]")
+                    console.print("[bold green]✔ VORTEX Package upgraded to latest release successfully.[/bold green]")
                 else:
                     console.print(f"[bold yellow]⚠ Package update note:[/bold yellow] {pip_res.stderr.strip() or pip_res.stdout.strip()}")
             except Exception as e:
                 console.print(f"[bold red]✖ Package update error:[/bold red] {e}")
 
-    console.print("\n[bold cyan]✔ System Update Process Completed.[/bold cyan]\n")
+    console.print("\n[bold cyan]✔ Update completed. Please restart VORTEX to apply changes.[/bold cyan]\n")
     questionary.press_any_key_to_continue().ask()
 
 def settings_menu():
