@@ -45,6 +45,7 @@ from config import (
     get_download_dir,
     set_download_dir,
     reset_config,
+    get_suggested_download_dirs,
     DEFAULT_DOWNLOADS_DIR
 )
 
@@ -280,18 +281,17 @@ def settings_menu():
             continue
 
         if choice == "change_dir":
-            desktop_dir = os.path.join(os.environ.get("USERPROFILE", ""), "Desktop")
-            win_downloads_dir = os.path.join(os.environ.get("USERPROFILE", ""), "Downloads")
+            suggestions = get_suggested_download_dirs()
+            dir_choices = [
+                Choice(f"{label}\n    ↳ {p}", value=p)
+                for label, p in suggestions
+            ]
+            dir_choices.append(Choice("◈ Specify Custom Folder Path...", value="custom"))
+            dir_choices.append(Choice("‹ Cancel", value="cancel"))
             
             dir_choice = questionary.select(
                 "› Select Destination Standard:",
-                choices=[
-                    Choice(f"◈ Project Storage ({DEFAULT_DOWNLOADS_DIR})", value=DEFAULT_DOWNLOADS_DIR),
-                    Choice(f"◈ Desktop ({desktop_dir})", value=desktop_dir),
-                    Choice(f"◈ User Downloads ({win_downloads_dir})", value=win_downloads_dir),
-                    Choice("◈ Specify Custom Folder Path...", value="custom"),
-                    Choice("‹ Cancel", value="cancel"),
-                ],
+                choices=dir_choices,
                 style=custom_style
             ).ask()
 

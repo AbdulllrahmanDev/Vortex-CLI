@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DOWNLOADS_DIR = os.path.join(PROJECT_DIR, "downloads")
@@ -12,6 +12,84 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "default_video_quality": "high",
     "default_audio_quality": "high",
 }
+
+def is_android() -> bool:
+    """Check if the current runtime environment is Android / Termux."""
+    return (
+        os.path.exists("/storage/emulated/0")
+        or os.path.exists("/sdcard")
+        or "ANDROID_ROOT" in os.environ
+        or "TERMUX_VERSION" in os.environ
+    )
+
+import posixpath
+
+def get_android_paths() -> List[Tuple[str, str]]:
+    """
+    Return standard Android media directories where videos, audios, and media
+    are automatically indexed and displayed in Android gallery and player apps.
+    """
+    termux_storage = os.path.expanduser("~/storage")
+    
+    if os.path.exists("/storage/emulated/0"):
+        base = "/storage/emulated/0"
+    elif os.path.exists("/sdcard"):
+        base = "/sdcard"
+    elif os.path.exists(termux_storage):
+        base = termux_storage
+    else:
+        base = "/storage/emulated/0"
+
+    return [
+        ("🎬 Android Movies [الفيديوهات - تظهر في مشغلات الفيديو والاستديو تلقائياً]", posixpath.join(base, "Movies")),
+        ("🎵 Android Music [الصوتيات - تظهر في مشغلات الموسيقى وتطبيقات الصوت]", posixpath.join(base, "Music")),
+        ("📥 Android Download [تنزيلات الهاتف العامة]", posixpath.join(base, "Download")),
+        ("📷 Android DCIM [معرض الوسائط والكاميرا الرئيسي]", posixpath.join(base, "DCIM")),
+        ("🎙️ Android Podcasts [البودكاست والملفات الصوتية]", posixpath.join(base, "Podcasts")),
+    ]
+
+def get_suggested_download_dirs() -> List[Tuple[str, str]]:
+    """
+    Return a comprehensive list of suggested storage paths based on the host OS.
+    Includes Android media paths, user standard directories, and project defaults.
+    """
+    suggestions: List[Tuple[str, str]] = []
+    
+    # 1. Project local storage
+    suggestions.append(("📁 مجلد التنزيلات الداخلي (Project Storage)", DEFAULT_DOWNLOADS_DIR))
+    
+    android_env = is_android()
+    android_paths = get_android_paths()
+    
+    # 2. If running on Android, prioritize Android media paths
+    if android_env:
+        suggestions.extend(android_paths)
+    
+    # 3. Standard Desktop / PC folders
+    home_dir = os.path.expanduser("~")
+    userprofile = os.environ.get("USERPROFILE", home_dir)
+    
+    desktop_dir = os.path.join(userprofile, "Desktop")
+    if os.path.exists(desktop_dir) or not android_env:
+        suggestions.append(("🖥️ سطح المكتب (Desktop)", desktop_dir))
+        
+    downloads_dir = os.path.join(userprofile, "Downloads")
+    if os.path.exists(downloads_dir) or not android_env:
+        suggestions.append(("📥 تنزيلات النظام (Downloads)", downloads_dir))
+        
+    videos_dir = os.path.join(userprofile, "Videos")
+    if os.path.exists(videos_dir):
+        suggestions.append(("🎬 مجلد الفيديوهات (Videos)", videos_dir))
+        
+    music_dir = os.path.join(userprofile, "Music")
+    if os.path.exists(music_dir):
+        suggestions.append(("🎵 مجلد الموسيقى (Music)", music_dir))
+        
+    # 4. If not on Android, append Android presets as options for multi-device/remote setups
+    if not android_env:
+        suggestions.extend(android_paths)
+        
+    return suggestions
 
 def load_config() -> Dict[str, Any]:
     """Load configuration from config.json or create default if not existing."""
@@ -40,10 +118,13 @@ def get_download_dir() -> str:
     """Get the currently configured downloads directory."""
     config = load_config()
     target_dir = config.get("download_dir", DEFAULT_DOWNLOADS_DIR)
+    expanded = os.path.expanduser(target_dir)
     try:
-        os.makedirs(target_dir, exist_ok=True)
-        return target_dir
+        os.makedirs(expanded, exist_ok=True)
+        return expanded
     except Exception:
+        if expanded.startswith(("/storage/", "/sdcard/")):
+            return expanded
         os.makedirs(DEFAULT_DOWNLOADS_DIR, exist_ok=True)
         config["download_dir"] = DEFAULT_DOWNLOADS_DIR
         save_config(config)
@@ -51,12 +132,17 @@ def get_download_dir() -> str:
 
 def set_download_dir(path: str) -> str:
     """Update and persist new download directory."""
-    abs_path = os.path.abspath(path.strip().strip('"').strip("'"))
+    raw_path = path.strip().strip('"').strip("'")
     try:
+        expanded_path = os.path.expanduser(raw_path)
+        if not os.path.isabs(expanded_path) and not expanded_path.startswith(("/storage/", "/sdcard/")):
+            abs_path = os.path.abspath(expanded_path)
+        else:
+            abs_path = expanded_path
         os.makedirs(abs_path, exist_ok=True)
     except Exception:
-        abs_path = DEFAULT_DOWNLOADS_DIR
-        os.makedirs(abs_path, exist_ok=True)
+        abs_path = raw_path
+
     config = load_config()
     config["download_dir"] = abs_path
     save_config(config)
@@ -66,3 +152,4 @@ def reset_config() -> Dict[str, Any]:
     """Reset configuration to default values."""
     save_config(DEFAULT_CONFIG)
     return DEFAULT_CONFIG.copy()
+

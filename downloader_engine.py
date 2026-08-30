@@ -261,7 +261,39 @@ def extract_page_media(page_url: str) -> Dict[str, Any]:
         "items": discovered_items
     }
 
-from config import get_download_dir
+from config import get_download_dir, is_android
+
+def trigger_android_media_scanner(filepath: str) -> None:
+    """
+    Trigger Android media scanning so downloaded audio and video files appear immediately
+    in system media players, music apps, and photo/video galleries.
+    """
+    if not filepath or not os.path.exists(filepath):
+        return
+        
+    abs_path = os.path.abspath(filepath)
+    
+    # 1. Termux media scan command if available
+    try:
+        if shutil.which("termux-media-scan"):
+            import subprocess
+            subprocess.run(["termux-media-scan", abs_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+            return
+    except Exception:
+        pass
+
+    # 2. Android am broadcast media scan intent
+    try:
+        if shutil.which("am"):
+            import subprocess
+            subprocess.run(
+                ["am", "broadcast", "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE", "-d", f"file://{abs_path}"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=5
+            )
+    except Exception:
+        pass
 
 class MediaDownloader:
     def __init__(self, output_dir: Optional[str] = None):
@@ -437,6 +469,9 @@ class MediaDownloader:
                             final_filepath = f"{base}.mp4"
 
                     file_size = os.path.getsize(final_filepath) if os.path.exists(final_filepath) else 0
+
+                    # Notify Android Media Scanner to index the audio/video file immediately
+                    trigger_android_media_scanner(final_filepath)
 
                     return {
                         "success": True,
