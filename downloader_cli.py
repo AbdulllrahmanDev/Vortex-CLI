@@ -243,6 +243,85 @@ def show_about_dialog():
         webbrowser.open("https://github.com/AbdulllrahmanDev")
         time.sleep(0.5)
 
+def handle_system_update():
+    """Check for updates and perform automatic upgrade of VORTEX and yt-dlp core engine."""
+    import subprocess
+    import shutil
+
+    console.clear()
+    console.print(Align.center(BANNER))
+
+    update_table = Table(box=box.ROUNDED, border_style="cyan", show_header=False, expand=True)
+    update_table.add_column("Component", style="bold cyan", width=22)
+    update_table.add_column("Description", style="bold white")
+    update_table.add_row("● Application", "VORTEX CLI Codebase & Interface")
+    update_table.add_row("● Core Engine", "yt-dlp Extraction & Platform Protocol Engine")
+    update_table.add_row("● Multimedia Modules", "imageio-ffmpeg & Network Handlers")
+    console.print(Panel(update_table, title="[bold cyan]◈ VORTEX SYSTEM UPDATE MANAGER ◈[/bold cyan]", border_style="cyan"))
+
+    confirm = questionary.confirm(
+        "› Start full system & engine upgrade check now?",
+        default=True,
+        style=custom_style
+    ).ask()
+
+    if not confirm:
+        return
+
+    py_exec = sys.executable
+
+    # 1. Update Core yt-dlp Engine
+    with console.status("[bold cyan]Updating Core Media Engine (yt-dlp)...[/bold cyan]", spinner="dots"):
+        try:
+            res = subprocess.run(
+                [py_exec, "-m", "pip", "install", "--upgrade", "yt-dlp"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if res.returncode == 0:
+                console.print("[bold green]✔ yt-dlp Core Engine is up-to-date.[/bold green]")
+            else:
+                console.print(f"[bold yellow]⚠ Engine update note:[/bold yellow] {res.stderr.strip() or res.stdout.strip()}")
+        except Exception as e:
+            console.print(f"[bold red]✖ Error updating yt-dlp:[/bold red] {e}")
+
+    # 2. Update VORTEX Application Codebase (Git or Pip)
+    with console.status("[bold cyan]Checking for VORTEX Application updates...[/bold cyan]", spinner="dots"):
+        is_git_repo = os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".git"))
+        if is_git_repo and shutil.which("git"):
+            try:
+                git_res = subprocess.run(
+                    ["git", "pull", "origin", "main"],
+                    cwd=os.path.dirname(os.path.abspath(__file__)),
+                    capture_output=True,
+                    text=True,
+                    timeout=45
+                )
+                if git_res.returncode == 0:
+                    console.print(f"[bold green]✔ Git Repository Synchronized:[/bold green]\n[dim]{git_res.stdout.strip()}[/dim]")
+                else:
+                    console.print(f"[bold yellow]⚠ Git notice:[/bold yellow] {git_res.stderr.strip() or git_res.stdout.strip()}")
+            except Exception as e:
+                console.print(f"[bold red]✖ Git update error:[/bold red] {e}")
+        else:
+            try:
+                pip_res = subprocess.run(
+                    [py_exec, "-m", "pip", "install", "--upgrade", "git+https://github.com/AbdulllrahmanDev/Vortex-CLI.git"],
+                    capture_output=True,
+                    text=True,
+                    timeout=90
+                )
+                if pip_res.returncode == 0:
+                    console.print("[bold green]✔ VORTEX Package updated to latest release from GitHub.[/bold green]")
+                else:
+                    console.print(f"[bold yellow]⚠ Package update note:[/bold yellow] {pip_res.stderr.strip() or pip_res.stdout.strip()}")
+            except Exception as e:
+                console.print(f"[bold red]✖ Package update error:[/bold red] {e}")
+
+    console.print("\n[bold cyan]✔ System Update Process Completed.[/bold cyan]\n")
+    questionary.press_any_key_to_continue().ask()
+
 def settings_menu():
     """Interactive Settings and Customization menu."""
     while True:
@@ -266,6 +345,7 @@ def settings_menu():
                 Choice("◈ Modify Storage Target Directory", value="change_dir"),
                 Choice("◈ Set Default Video Quality Profile", value="change_v_quality"),
                 Choice("◈ Set Default Audio Bitrate Profile", value="change_a_quality"),
+                Choice("◈ Check & Update VORTEX (تحديث البرنامج والمحرك)", value="update"),
                 Choice("◈ About VORTEX & Developer Profile", value="about"),
                 Choice("◈ Restore Default Factory Configurations", value="reset"),
                 Choice("‹ Return to Main Menu", value="back"),
@@ -275,6 +355,10 @@ def settings_menu():
 
         if not choice or choice == "back":
             break
+
+        if choice == "update":
+            handle_system_update()
+            continue
 
         if choice == "about":
             show_about_dialog()
