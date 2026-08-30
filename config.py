@@ -150,7 +150,7 @@ def set_download_dir(path: str) -> str:
     save_config(config)
     return abs_path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 GITHUB_REPO_RAW = "https://raw.githubusercontent.com/AbdulllrahmanDev/Vortex-CLI/main/pyproject.toml"
 
 def check_for_updates() -> Dict[str, Any]:
