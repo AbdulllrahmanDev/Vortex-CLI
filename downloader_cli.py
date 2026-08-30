@@ -45,6 +45,8 @@ from config import (
     get_download_dir,
     set_download_dir,
     reset_config,
+    get_pc_paths,
+    get_android_paths,
     get_suggested_download_dirs,
     check_for_updates,
     VERSION,
@@ -407,37 +409,67 @@ def settings_menu():
             continue
 
         if choice == "change_dir":
-            suggestions = get_suggested_download_dirs()
-            dir_choices = [
-                Choice(f"{label}\n    ↳ {p}", value=p)
-                for label, p in suggestions
-            ]
-            dir_choices.append(Choice("◈ Specify Custom Folder Path...", value="custom"))
-            dir_choices.append(Choice("‹ Cancel", value="cancel"))
-            
-            dir_choice = questionary.select(
-                "› Select Destination Standard:",
-                choices=dir_choices,
+            category = questionary.select(
+                "› Select Storage Category:",
+                choices=[
+                    Choice("◈ Desktop / PC Storage Standard (Computer Directories)", value="pc"),
+                    Choice("◈ Android Storage Standard (Mobile Media & Auto-Index)", value="android"),
+                    Choice("◈ Specify Custom Folder Path...", value="custom"),
+                    Choice("‹ Cancel", value="cancel"),
+                ],
                 style=custom_style
             ).ask()
 
-            if dir_choice and dir_choice != "cancel":
-                if dir_choice == "custom":
-                    try:
-                        custom_path = questionary.text(
-                            "› Enter Target Folder Path:",
-                            style=custom_style
-                        ).ask()
-                    except KeyboardInterrupt:
-                        custom_path = None
-                    if custom_path and custom_path.strip():
-                        set_download_dir(custom_path)
-                        console.print(f"[bold cyan]✔ Storage destination registered:[/bold cyan] {get_download_dir()}")
-                        time.sleep(1.2)
-                else:
-                    set_download_dir(dir_choice)
-                    console.print(f"[bold cyan]✔ Storage destination registered:[/bold cyan] {get_download_dir()}")
-                    time.sleep(1.2)
+            if not category or category == "cancel":
+                continue
+
+            selected_dir = None
+
+            if category == "pc":
+                pc_paths = get_pc_paths()
+                pc_choices = [
+                    Choice(f"{label}\n    ↳ {p}", value=p)
+                    for label, p in pc_paths
+                ]
+                pc_choices.append(Choice("‹ Return / Cancel", value="back"))
+                chosen_pc = questionary.select(
+                    "› Select PC Storage Location:",
+                    choices=pc_choices,
+                    style=custom_style
+                ).ask()
+                if chosen_pc and chosen_pc != "back":
+                    selected_dir = chosen_pc
+
+            elif category == "android":
+                android_paths = get_android_paths()
+                android_choices = [
+                    Choice(f"{label}\n    ↳ {p}", value=p)
+                    for label, p in android_paths
+                ]
+                android_choices.append(Choice("‹ Return / Cancel", value="back"))
+                chosen_android = questionary.select(
+                    "› Select Android Storage Location:",
+                    choices=android_choices,
+                    style=custom_style
+                ).ask()
+                if chosen_android and chosen_android != "back":
+                    selected_dir = chosen_android
+
+            elif category == "custom":
+                try:
+                    custom_path = questionary.text(
+                        "› Enter Target Folder Path:",
+                        style=custom_style
+                    ).ask()
+                except KeyboardInterrupt:
+                    custom_path = None
+                if custom_path and custom_path.strip():
+                    selected_dir = custom_path.strip()
+
+            if selected_dir:
+                set_download_dir(selected_dir)
+                console.print(f"[bold cyan]✔ Storage destination registered:[/bold cyan] {get_download_dir()}")
+                time.sleep(1.2)
 
         elif choice == "change_v_quality":
             vq = questionary.select(
@@ -722,22 +754,26 @@ def interactive_mode():
             if not query or not query.strip():
                 continue
 
-            with console.status(f"[bold cyan]Querying stream repositories for '[white]{query}[/white]'...[/bold cyan]", spinner="dots"):
+            with console.status(f"[bold cyan]Searching multiple media providers (YouTube, SoundCloud, Cinema & Web) for '[white]{query}[/white]'...[/bold cyan]", spinner="dots"):
                 try:
-                    results = search_media(query, max_results=6)
+                    results = search_media(query, max_results=8)
                 except Exception as e:
                     console.print(f"[bold red]Query failure:[/bold red] {e}")
                     time.sleep(1.8)
                     continue
 
             if not results:
-                console.print("[bold red]No candidate streams found matching query.[/bold red]")
+                console.print("[bold red]No candidate media streams found matching query across providers.[/bold red]")
                 time.sleep(1.8)
                 continue
 
             search_choices = []
             for r in results:
-                display_label = f"[{r['duration_str']}] {r['title']}  • {r['uploader']}"
+                source_tag = r.get("source", "Web").upper()
+                dur = r.get("duration_str", "N/A")
+                upl = r.get("uploader", "Unknown")
+                title = r.get("title", "Media Item")
+                display_label = f"◈ [{source_tag}] {title}\n    ↳ Duration: {dur}  •  Publisher: {upl}  •  Source: {source_tag}"
                 search_choices.append(Choice(display_label, value=r['url']))
             search_choices.append(Choice("‹ Return to Main Menu", value="back"))
 

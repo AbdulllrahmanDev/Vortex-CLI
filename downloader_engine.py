@@ -59,43 +59,145 @@ def format_size(bytes_val: Optional[float]) -> str:
         bytes_val /= 1024.0
     return f"{bytes_val:.2f} PB"
 
-def search_media(query: str, max_results: int = 5) -> List[Dict[str, Any]]:
-    """Search YouTube for queries and return top results."""
-    search_term = f"ytsearch{max_results}:{query}"
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "extract_flat": "in_playlist",
-        "skip_download": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android", "web"]
-            }
-        }
-    }
-    if FFMPEG_DIR:
-        ydl_opts["ffmpeg_location"] = FFMPEG_DIR
+import concurrent.futures
 
-    results = []
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
+    """
+    Intelligent Multi-Source Search Engine:
+    Concurrently searches YouTube, SoundCloud, Archive.org (Movies & Media),
+    and general web stream sources, labeling the source of every result.
+    """
+    clean_query = query.strip()
+    if not clean_query:
+        return []
+
+    results: List[Dict[str, Any]] = []
+    seen_urls = set()
+
+    # 1. YouTube Search Worker
+    def _search_youtube(q: str, limit: int = 4):
+        items = []
         try:
-            info = ydl.extract_info(search_term, download=False)
-            if info and "entries" in info:
-                for entry in info["entries"]:
-                    if not entry:
-                        continue
-                    results.append({
-                        "id": entry.get("id"),
-                        "title": entry.get("title", "Unknown Title"),
-                        "url": entry.get("url") or f"https://www.youtube.com/watch?v={entry.get('id')}",
-                        "duration": entry.get("duration"),
-                        "duration_str": format_duration(entry.get("duration")),
-                        "uploader": entry.get("uploader") or entry.get("channel", "Unknown Channel"),
-                        "view_count": entry.get("view_count", 0),
-                    })
-        except Exception as e:
-            raise RuntimeError(f"Failed to search: {e}")
-            
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": "in_playlist",
+                "skip_download": True,
+                "extractor_args": {"youtube": {"player_client": ["android", "web"]}}
+            }
+            if FFMPEG_DIR:
+                ydl_opts["ffmpeg_location"] = FFMPEG_DIR
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(f"ytsearch{limit}:{q}", download=False)
+                if info and "entries" in info:
+                    for entry in info["entries"]:
+                        if not entry:
+                            continue
+                        entry_url = entry.get("url") or (f"https://www.youtube.com/watch?v={entry.get('id')}" if entry.get("id") else None)
+                        if entry_url:
+                            items.append({
+                                "id": entry.get("id"),
+                                "title": entry.get("title", "YouTube Media"),
+                                "url": entry_url,
+                                "duration": entry.get("duration"),
+                                "duration_str": format_duration(entry.get("duration")),
+                                "uploader": entry.get("uploader") or entry.get("channel", "YouTube Creator"),
+                                "source": "YouTube",
+                                "view_count": entry.get("view_count", 0),
+                            })
+        except Exception:
+            pass
+        return items
+
+    # 2. SoundCloud Search Worker (Tracks, Songs, Audios)
+    def _search_soundcloud(q: str, limit: int = 4):
+        items = []
+        try:
+            ydl_opts = {
+                "quiet": True,
+                "no_warnings": True,
+                "extract_flat": "in_playlist",
+                "skip_download": True,
+            }
+            if FFMPEG_DIR:
+                ydl_opts["ffmpeg_location"] = FFMPEG_DIR
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(f"scsearch{limit}:{q}", download=False)
+                if info and "entries" in info:
+                    for entry in info["entries"]:
+                        if not entry:
+                            continue
+                        entry_url = entry.get("url")
+                        if entry_url:
+                            items.append({
+                                "id": entry.get("id"),
+                                "title": entry.get("title", "SoundCloud Audio"),
+                                "url": entry_url,
+                                "duration": entry.get("duration"),
+                                "duration_str": format_duration(entry.get("duration")),
+                                "uploader": entry.get("uploader") or "SoundCloud Artist",
+                                "source": "SoundCloud",
+                                "view_count": entry.get("view_count", 0),
+                            })
+        except Exception:
+            pass
+        return items
+
+    # 3. Archive.org Search Worker (Movies, Documentaries, Cinema & Audio)
+    def _search_archive(q: str, limit: int = 3):
+        items = []
+        try:
+            url = f"https://archive.org/advancedsearch.php?q={urllib.parse.quote(q)}+AND+mediatype:(movies+OR+audio)&fl[]=identifier,title,uploader,downloads,publicdate&sort[]=downloads+desc&rows={limit}&page=1&output=json"
+            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
+            if resp.status_code == 200:
+                data = resp.json()
+                docs = data.get("response", {}).get("docs", [])
+                for d in docs:
+                    ident = d.get("identifier")
+                    if ident:
+                        items.append({
+                            "id": ident,
+                            "title": d.get("title") or ident,
+                            "url": f"https://archive.org/details/{ident}",
+                            "duration": None,
+                            "duration_str": "Full Media",
+                            "uploader": d.get("uploader") or "Archive Cinema",
+                            "source": "Archive.org",
+                            "view_count": d.get("downloads", 0),
+                        })
+        except Exception:
+            pass
+        return items
+
+    # Execute all providers concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        f_yt = executor.submit(_search_youtube, clean_query, 4)
+        f_sc = executor.submit(_search_soundcloud, clean_query, 4)
+        f_arc = executor.submit(_search_archive, clean_query, 3)
+
+        yt_items = f_yt.result()
+        sc_items = f_sc.result()
+        arc_items = f_arc.result()
+
+    # Interleave and deduplicate results
+    combined_pool = []
+    max_len = max(len(yt_items), len(sc_items), len(arc_items), 1)
+    for i in range(max_len):
+        if i < len(yt_items):
+            combined_pool.append(yt_items[i])
+        if i < len(sc_items):
+            combined_pool.append(sc_items[i])
+        if i < len(arc_items):
+            combined_pool.append(arc_items[i])
+
+    for item in combined_pool:
+        url = item.get("url")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            results.append(item)
+            if len(results) >= max_results:
+                break
+
     return results
 
 def get_media_info(url_or_query: str) -> Dict[str, Any]:

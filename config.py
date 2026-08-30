@@ -48,6 +48,31 @@ def get_android_paths() -> List[Tuple[str, str]]:
         ("◈ Android Podcasts (Podcasts & Voice Media)", posixpath.join(base, "Podcasts")),
     ]
 
+def get_pc_paths() -> List[Tuple[str, str]]:
+    """Return standard desktop / PC user directories."""
+    paths: List[Tuple[str, str]] = []
+    
+    # 1. Project local storage
+    paths.append(("◈ Project Workspace Storage", DEFAULT_DOWNLOADS_DIR))
+    
+    # 2. Desktop / User profile directories
+    home_dir = os.path.expanduser("~")
+    userprofile = os.environ.get("USERPROFILE", home_dir)
+    
+    desktop_dir = os.path.join(userprofile, "Desktop")
+    paths.append(("◈ Desktop Directory", desktop_dir))
+    
+    downloads_dir = os.path.join(userprofile, "Downloads")
+    paths.append(("◈ User Downloads Directory", downloads_dir))
+    
+    videos_dir = os.path.join(userprofile, "Videos")
+    paths.append(("◈ Videos Library", videos_dir))
+    
+    music_dir = os.path.join(userprofile, "Music")
+    paths.append(("◈ Music Library", music_dir))
+    
+    return paths
+
 def get_suggested_download_dirs() -> List[Tuple[str, str]]:
     """
     Return a comprehensive list of suggested storage paths based on the host OS.
@@ -55,38 +80,15 @@ def get_suggested_download_dirs() -> List[Tuple[str, str]]:
     """
     suggestions: List[Tuple[str, str]] = []
     
-    # 1. Project local storage
-    suggestions.append(("◈ Project Workspace Storage", DEFAULT_DOWNLOADS_DIR))
-    
     android_env = is_android()
+    pc_paths = get_pc_paths()
     android_paths = get_android_paths()
     
-    # 2. If running on Android, prioritize Android media paths
     if android_env:
         suggestions.extend(android_paths)
-    
-    # 3. Standard Desktop / PC folders
-    home_dir = os.path.expanduser("~")
-    userprofile = os.environ.get("USERPROFILE", home_dir)
-    
-    desktop_dir = os.path.join(userprofile, "Desktop")
-    if os.path.exists(desktop_dir) or not android_env:
-        suggestions.append(("◈ Desktop Directory", desktop_dir))
-        
-    downloads_dir = os.path.join(userprofile, "Downloads")
-    if os.path.exists(downloads_dir) or not android_env:
-        suggestions.append(("◈ User Downloads Directory", downloads_dir))
-        
-    videos_dir = os.path.join(userprofile, "Videos")
-    if os.path.exists(videos_dir):
-        suggestions.append(("◈ Videos Library", videos_dir))
-        
-    music_dir = os.path.join(userprofile, "Music")
-    if os.path.exists(music_dir):
-        suggestions.append(("◈ Music Library", music_dir))
-        
-    # 4. If not on Android, append Android presets as options for multi-device/remote setups
-    if not android_env:
+        suggestions.extend(pc_paths)
+    else:
+        suggestions.extend(pc_paths)
         suggestions.extend(android_paths)
         
     return suggestions
