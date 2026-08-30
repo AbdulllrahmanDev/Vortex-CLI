@@ -61,20 +61,102 @@ def format_size(bytes_val: Optional[float]) -> str:
 
 import concurrent.futures
 
+def detect_source_name(url: str) -> str:
+    """Identify the platform brand or domain from a URL."""
+    url_lower = url.lower()
+    if "youtube.com" in url_lower or "youtu.be" in url_lower:
+        return "YouTube"
+    elif "soundcloud.com" in url_lower:
+        return "SoundCloud"
+    elif "dailymotion.com" in url_lower:
+        return "Dailymotion"
+    elif "vimeo.com" in url_lower:
+        return "Vimeo"
+    elif "archive.org" in url_lower:
+        return "Archive.org"
+    elif "bilibili" in url_lower:
+        return "Bilibili"
+    elif "facebook.com" in url_lower or "fb.watch" in url_lower:
+        return "Facebook"
+    elif "tiktok.com" in url_lower:
+        return "TikTok"
+    elif "ok.ru" in url_lower:
+        return "OK.ru"
+    elif "rutube.ru" in url_lower:
+        return "Rutube"
+    else:
+        domain = urllib.parse.urlparse(url).netloc.replace("www.", "")
+        return domain.capitalize() if domain else "Web Stream"
+
 def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
     """
     Intelligent Multi-Source Search Engine:
-    Concurrently searches YouTube, SoundCloud, Archive.org (Movies & Media),
-    and general web stream sources, labeling the source of every result.
+    - Automatically classifies intent: Movie/Cinema/Video vs Music/Audio.
+    - For Movies: Searches Google/Web Video engines (Dailymotion, Vimeo, Bilibili), Archive.org Cinema, and YouTube.
+    - For Audio: Searches SoundCloud, YouTube Music, and Audio repositories.
     """
     clean_query = query.strip()
     if not clean_query:
         return []
 
+    q_lower = clean_query.lower()
+    audio_keywords = [
+        "song", "track", "music", "remix", "soundtrack", "audio", "album", "mp3", 
+        "podcast", "beat", "instrumental", "موسيقى", "اغنية", "أغنية", "تراك", 
+        "نشيد", "انشودة", "قرآن", "سورة", "تلاوة", "صوت", "لحن"
+    ]
+    movie_keywords = [
+        "movie", "film", "cinema", "documentary", "series", "season", "episode",
+        "فيلم", "مسلسل", "حلقة", "موسم", "سينما", "وثائقي", "كامل", "full movie",
+        "1080p", "4k", "bluray", "watch", "stream", "show"
+    ]
+
+    is_audio_intent = any(k in q_lower for k in audio_keywords)
+    is_movie_intent = any(k in q_lower for k in movie_keywords) or (not is_audio_intent)
+
     results: List[Dict[str, Any]] = []
     seen_urls = set()
 
-    # 1. YouTube Search Worker
+    # 1. Web Movie & Video Platforms Search Engine Worker (Dailymotion, Vimeo, Bilibili, Movie Streamers)
+    def _search_web_video_engine(q: str, limit: int = 5):
+        items = []
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+        search_term = f"{q} dailymotion vimeo bilibili stream full"
+        try:
+            resp = requests.post(
+                "https://lite.duckduckgo.com/lite/",
+                data={"q": search_term},
+                headers=headers,
+                timeout=6
+            )
+            if resp.status_code == 200:
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", class_="result-link"):
+                    href = a.get("href", "").strip()
+                    title = a.text.strip()
+                    if not href or not href.startswith("http"):
+                        continue
+                    # Skip search engines and irrelevant aggregators
+                    if any(bad in href.lower() for bad in ["google.", "duckduckgo.", "bing.", "yahoo.", "wikipedia.", "imdb.com", "rottentomatoes.com"]):
+                        continue
+                    source = detect_source_name(href)
+                    items.append({
+                        "id": href,
+                        "title": title,
+                        "url": href,
+                        "duration": None,
+                        "duration_str": "Full Feature Stream",
+                        "uploader": source,
+                        "source": source,
+                        "view_count": 0,
+                    })
+                    if len(items) >= limit:
+                        break
+        except Exception:
+            pass
+        return items
+
+    # 2. YouTube Search Worker
     def _search_youtube(q: str, limit: int = 4):
         items = []
         try:
@@ -109,7 +191,7 @@ def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
             pass
         return items
 
-    # 2. SoundCloud Search Worker (Tracks, Songs, Audios)
+    # 3. SoundCloud Search Worker (Exclusive for Music & Audios)
     def _search_soundcloud(q: str, limit: int = 4):
         items = []
         try:
@@ -143,11 +225,11 @@ def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
             pass
         return items
 
-    # 3. Archive.org Search Worker (Movies, Documentaries, Cinema & Audio)
-    def _search_archive(q: str, limit: int = 3):
+    # 4. Archive.org Cinema & Media Worker
+    def _search_archive(q: str, limit: int = 3, media_type: str = "movies"):
         items = []
         try:
-            url = f"https://archive.org/advancedsearch.php?q={urllib.parse.quote(q)}+AND+mediatype:(movies+OR+audio)&fl[]=identifier,title,uploader,downloads,publicdate&sort[]=downloads+desc&rows={limit}&page=1&output=json"
+            url = f"https://archive.org/advancedsearch.php?q={urllib.parse.quote(q)}+AND+mediatype:({media_type})&fl[]=identifier,title,uploader,downloads,publicdate&sort[]=downloads+desc&rows={limit}&page=1&output=json"
             resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6)
             if resp.status_code == 200:
                 data = resp.json()
@@ -160,7 +242,7 @@ def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
                             "title": d.get("title") or ident,
                             "url": f"https://archive.org/details/{ident}",
                             "duration": None,
-                            "duration_str": "Full Media",
+                            "duration_str": "Full Feature / Media",
                             "uploader": d.get("uploader") or "Archive Cinema",
                             "source": "Archive.org",
                             "view_count": d.get("downloads", 0),
@@ -169,26 +251,32 @@ def search_media(query: str, max_results: int = 8) -> List[Dict[str, Any]]:
             pass
         return items
 
-    # Execute all providers concurrently
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        f_yt = executor.submit(_search_youtube, clean_query, 4)
-        f_sc = executor.submit(_search_soundcloud, clean_query, 4)
-        f_arc = executor.submit(_search_archive, clean_query, 3)
+    # Dispatch tasks based on identified intent
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {}
+        if is_movie_intent:
+            futures["web"] = executor.submit(_search_web_video_engine, clean_query, 5)
+            futures["yt"] = executor.submit(_search_youtube, clean_query, 4)
+            futures["arc"] = executor.submit(_search_archive, clean_query, 3, "movies")
+        elif is_audio_intent:
+            futures["sc"] = executor.submit(_search_soundcloud, clean_query, 5)
+            futures["yt"] = executor.submit(_search_youtube, clean_query, 4)
+            futures["arc"] = executor.submit(_search_archive, clean_query, 3, "audio")
+        else:
+            futures["web"] = executor.submit(_search_web_video_engine, clean_query, 4)
+            futures["yt"] = executor.submit(_search_youtube, clean_query, 4)
+            futures["sc"] = executor.submit(_search_soundcloud, clean_query, 3)
+            futures["arc"] = executor.submit(_search_archive, clean_query, 2, "movies")
 
-        yt_items = f_yt.result()
-        sc_items = f_sc.result()
-        arc_items = f_arc.result()
+        all_lists = [f.result() for f in futures.values()]
 
-    # Interleave and deduplicate results
+    # Interleave results dynamically
     combined_pool = []
-    max_len = max(len(yt_items), len(sc_items), len(arc_items), 1)
+    max_len = max([len(l) for l in all_lists] + [1])
     for i in range(max_len):
-        if i < len(yt_items):
-            combined_pool.append(yt_items[i])
-        if i < len(sc_items):
-            combined_pool.append(sc_items[i])
-        if i < len(arc_items):
-            combined_pool.append(arc_items[i])
+        for l in all_lists:
+            if i < len(l):
+                combined_pool.append(l[i])
 
     for item in combined_pool:
         url = item.get("url")
@@ -488,14 +576,12 @@ class MediaDownloader:
                 "320k": "320",
                 "192k": "192",
                 "128k": "128",
-                "عالية": "320",
-                "متوسطة": "192",
-                "منخفضة": "128"
             }
             target_bitrate = bitrate_map.get(quality_key, "320")
             
             ydl_opts.update({
                 "format": "bestaudio/best",
+                "format_sort": ["abr", "size"],
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -509,28 +595,16 @@ class MediaDownloader:
                 ],
             })
         else:
-            # Video Format & Resolution configurations
-            if quality_key in ["high", "ultra", "best", "4k", "1080p", "عالية"]:
-                ydl_opts["format"] = (
-                    "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
-                    "bestvideo+bestaudio/"
-                    "best[ext=mp4]/"
-                    "best"
-                )
-            elif quality_key in ["medium", "standard", "720p", "480p", "متوسطة"]:
-                ydl_opts["format"] = (
-                    "bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/"
-                    "bestvideo[height<=720]+bestaudio/"
-                    "best[height<=720]/"
-                    "best"
-                )
-            else:  # low / 360p / saver
-                ydl_opts["format"] = (
-                    "bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/"
-                    "bestvideo[height<=360]+bestaudio/"
-                    "best[height<=360]/"
-                    "best"
-                )
+            # Video Format & Resolution configurations - prioritized for best full stream
+            if quality_key in ["high", "ultra", "best", "4k", "1080p"]:
+                ydl_opts["format"] = "bestvideo*+bestaudio/best"
+                ydl_opts["format_sort"] = ["res", "fps", "size", "tbr"]
+            elif quality_key in ["medium", "standard", "720p", "480p"]:
+                ydl_opts["format"] = "bestvideo*[height<=720]+bestaudio/best[height<=720]/best"
+                ydl_opts["format_sort"] = ["res", "fps", "size", "tbr"]
+            else:  # low / 360p
+                ydl_opts["format"] = "bestvideo*[height<=360]+bestaudio/best[height<=360]/best"
+                ydl_opts["format_sort"] = ["res", "fps", "size", "tbr"]
             
             ydl_opts["merge_output_format"] = "mp4"
 
@@ -560,7 +634,7 @@ class MediaDownloader:
                         
                     final_filepath = ydl.prepare_filename(info)
                     
-                    # Locate actual created file (mp3 or mp4)
+                    # Locate actual created file (mp3, mp4, mkv, webm)
                     if is_audio:
                         base, _ = os.path.splitext(final_filepath)
                         if os.path.exists(f"{base}.mp3"):
@@ -569,6 +643,14 @@ class MediaDownloader:
                         base, _ = os.path.splitext(final_filepath)
                         if os.path.exists(f"{base}.mp4"):
                             final_filepath = f"{base}.mp4"
+                        elif os.path.exists(f"{base}.mkv"):
+                            final_filepath = f"{base}.mkv"
+                        elif os.path.exists(f"{base}.webm"):
+                            final_filepath = f"{base}.webm"
+
+                    # If final_filepath still not existing or 0 size, check self.last_downloaded_file
+                    if (not os.path.exists(final_filepath) or os.path.getsize(final_filepath) == 0) and self.last_downloaded_file and os.path.exists(self.last_downloaded_file):
+                        final_filepath = self.last_downloaded_file
 
                     file_size = os.path.getsize(final_filepath) if os.path.exists(final_filepath) else 0
 

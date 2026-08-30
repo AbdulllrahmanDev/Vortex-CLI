@@ -140,10 +140,10 @@ def download_with_progress(downloader: MediaDownloader, target: str, media_type:
     """Execute download displaying a modern animated rich progress bar."""
     
     with Progress(
-        SpinnerColumn("dots", style="bold cyan"),
-        TextColumn("[bold cyan]{task.fields[status]}[/bold cyan]"),
-        BarColumn(bar_width=35, style="dim cyan", complete_style="bold cyan"),
-        TextColumn("[bold cyan]{task.percentage:>3.1f}%[/bold cyan]"),
+        SpinnerColumn("dots", style="bold #ffd700"),
+        TextColumn("[bold #ffd700]{task.fields[status]}[/bold #ffd700]"),
+        BarColumn(bar_width=35, style="dim #5c5000", complete_style="bold #ffd700", finished_style="bold #ffcc00"),
+        TextColumn("[bold #ffd700]{task.percentage:>3.1f}%[/bold #ffd700]"),
         DownloadColumn(),
         TransferSpeedColumn(),
         TimeRemainingColumn(),
@@ -208,6 +208,40 @@ def show_success_summary(result: dict):
 
     console.print()
     console.print(Panel(summary_table, title="[bold cyan]◈ TRANSMISSION SUCCESSFUL ◈[/bold cyan]", border_style="cyan"))
+
+def open_path_in_system(target_path: str, select_file: bool = False):
+    """Open a file or directory using the OS default application / file manager."""
+    if not target_path or not os.path.exists(target_path):
+        return
+    abs_path = os.path.abspath(target_path)
+    
+    if sys.platform == "win32":
+        try:
+            if select_file and os.path.isfile(abs_path):
+                import subprocess
+                subprocess.Popen(f'explorer /select,"{abs_path}"')
+            else:
+                os.startfile(abs_path)
+        except Exception:
+            pass
+    elif sys.platform == "darwin":
+        import subprocess
+        try:
+            if select_file:
+                subprocess.run(["open", "-R", abs_path], check=False)
+            else:
+                subprocess.run(["open", abs_path], check=False)
+        except Exception:
+            pass
+    else:
+        import subprocess
+        try:
+            if shutil.which("termux-open"):
+                subprocess.run(["termux-open", abs_path], check=False)
+            elif shutil.which("xdg-open"):
+                subprocess.run(["xdg-open", abs_path], check=False)
+        except Exception:
+            pass
 
 def show_about_dialog():
     """Display comprehensive information about VORTEX and the developer with portfolio links."""
@@ -663,20 +697,22 @@ def handle_page_sniffer(downloader: MediaDownloader, initial_url: Optional[str] 
 
     console.print(f"\n[bold green]✔ Webpage Sniffer Completed: {success_count}/{len(selected_items)} assets saved successfully.[/bold green]\n")
     
-    post_action = questionary.select(
-        "› Operational Follow-Up:",
-        choices=[
-            Choice("◈ Reveal Storage Directory in File Explorer", value="open"),
-            Choice("‹ Return to Main Menu", value="menu"),
-        ],
-        style=custom_style
-    ).ask()
+    while True:
+        post_action = questionary.select(
+            "› Operational Follow-Up:",
+            choices=[
+                Choice("◈ Open Storage Folder in File Manager", value="open"),
+                Choice("◈ Return to Main Menu", value="menu"),
+            ],
+            style=custom_style
+        ).ask()
 
-    if post_action == "open":
-        target_folder = downloader.output_dir
-        if sys.platform == "win32":
-            os.startfile(target_folder)
-        time.sleep(0.8)
+        if not post_action or post_action == "menu":
+            break
+        elif post_action == "open":
+            open_path_in_system(downloader.output_dir)
+            console.print("[bold cyan]✔ Opening storage directory in file manager...[/bold cyan]")
+            time.sleep(1.0)
 
 def interactive_mode():
     while True:
@@ -874,8 +910,22 @@ def interactive_mode():
                     show_success_summary(res)
                     success_count += 1
 
-            console.print(f"\n[bold cyan]✔ Batch Pipeline Completed: {success_count}/{len(url_list)} assets processed successfully.[/bold cyan]")
-            questionary.press_any_key_to_continue().ask()
+            console.print(f"\n[bold cyan]✔ Batch Pipeline Completed: {success_count}/{len(url_list)} assets processed successfully.[/bold cyan]\n")
+            while True:
+                batch_followup = questionary.select(
+                    "› Operational Follow-Up:",
+                    choices=[
+                        Choice("◈ Open Storage Folder in File Manager", value="open"),
+                        Choice("◈ Return to Main Menu", value="menu"),
+                    ],
+                    style=custom_style
+                ).ask()
+                if not batch_followup or batch_followup == "menu":
+                    break
+                elif batch_followup == "open":
+                    open_path_in_system(downloader.output_dir)
+                    console.print("[bold cyan]✔ Opening storage directory in file manager...[/bold cyan]")
+                    time.sleep(1.0)
             continue
 
         # Format Selection for single download
@@ -922,25 +972,38 @@ def interactive_mode():
         if result:
             show_success_summary(result)
             
-            # Post Action
-            next_action = questionary.select(
-                "› Operational Follow-Up:",
-                choices=[
-                    Choice("◈ Process Another Media Stream", value="again"),
-                    Choice("◈ Reveal Asset in File Explorer", value="open"),
-                    Choice("✕ Exit", value="exit"),
-                ],
-                style=custom_style
-            ).ask()
+            filepath = result.get("filepath", "")
+            
+            while True:
+                next_action = questionary.select(
+                    "› Operational Follow-Up:",
+                    choices=[
+                        Choice("◈ Open / Play Downloaded Media File", value="play_file"),
+                        Choice("◈ Open Storage Folder Location", value="open_folder"),
+                        Choice("◈ Download More / Return to Main Menu", value="again"),
+                        Choice("✕ Exit VORTEX", value="exit"),
+                    ],
+                    style=custom_style
+                ).ask()
 
-            if next_action == "open":
-                if sys.platform == "win32" and os.path.exists(result.get("filepath", "")):
-                    os.system(f'explorer /select,"{result["filepath"]}"')
-                elif sys.platform == "win32":
-                    os.startfile(get_download_dir())
-            elif next_action == "exit":
-                console.print("\n[bold cyan]✦ Session Terminated. Thank you for using VORTEX. ✦[/bold cyan]\n")
-                break
+                if not next_action or next_action == "again":
+                    break
+                elif next_action == "play_file":
+                    if filepath and os.path.exists(filepath):
+                        open_path_in_system(filepath, select_file=False)
+                        console.print("[bold cyan]✔ Launching media file in default system player...[/bold cyan]")
+                        time.sleep(1.0)
+                    else:
+                        console.print("[bold yellow]⚠ Media file not found on disk.[/bold yellow]")
+                        time.sleep(1.0)
+                elif next_action == "open_folder":
+                    folder = os.path.dirname(filepath) if (filepath and os.path.exists(filepath)) else get_download_dir()
+                    open_path_in_system(folder, select_file=False)
+                    console.print("[bold cyan]✔ Opening storage folder in file manager...[/bold cyan]")
+                    time.sleep(1.0)
+                elif next_action == "exit":
+                    console.print("\n[bold cyan]✦ Session Terminated. Thank you for using VORTEX Media Engine. ✦[/bold cyan]\n")
+                    return
 
 def main():
     parser = argparse.ArgumentParser(
