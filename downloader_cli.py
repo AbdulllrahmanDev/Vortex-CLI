@@ -216,7 +216,7 @@ def show_about_dialog():
     about_table.add_column("Details", style="bold white")
 
     about_table.add_row("● Application", "VORTEX CLI — Next-Gen Ultra Media Engine")
-    about_table.add_row("● Version", "1.0.0 (Ultra Release)")
+    about_table.add_row("● Version", f"{VERSION} (Ultra Release)")
     about_table.add_row("● Core Engine", "yt-dlp + High-Speed Stream Multiplexer + FFmpeg")
     about_table.add_row("● Architecture", "Python 3.8+ / Standalone Binary")
     about_table.add_row("● Compatibility", "YouTube • TikTok • Twitter/X • Facebook • Instagram • SoundCloud • Direct Streams")

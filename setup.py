@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="vortex-cli",
-    version="1.0.0",
+    version="1.1.0",
     author="Abdulrahman",
     description="Next-Gen Ultra Media Engine & High-Speed Stream Grabber",
     long_description=long_description,
