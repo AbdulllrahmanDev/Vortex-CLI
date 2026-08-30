@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: vortex-cli
-Version: 1.0.0
+Version: 1.1.0
 Summary: Next-Gen Ultra Media Engine & High-Speed Stream Grabber
 Home-page: https://github.com/AbdulllrahmanDev/Vortex-CLI
 Author: Abdulrahman
@@ -73,7 +73,28 @@ Dynamic: requires-python
 
 ---
 
-## 🚀 Quick Start
+## ⚡ 1-Command Instant Install & Run
+
+You can install and run VORTEX directly in a single command without even cloning the repository:
+
+### Method A: Install Globally via `pip` (Recommended)
+```bash
+pip install git+https://github.com/AbdulllrahmanDev/Vortex-CLI.git
+```
+Then run anytime from any terminal:
+```bash
+vortex
+```
+
+### Method B: Run Directly via `pipx` *(Like `npx` in Node)*
+If you have `pipx` installed, run it on the fly with zero setup:
+```bash
+pipx run git+https://github.com/AbdulllrahmanDev/Vortex-CLI.git
+```
+
+---
+
+## 🚀 Manual Quick Start (Git Clone)
 
 ### 1. Clone the repository
 ```bash
@@ -140,12 +161,13 @@ Running `vortex` without arguments opens the full interactive dashboard:
 
 ```
 ? › Select Operational Mode:
-  ❯ [ 01 ] ◈ Direct URL Stream Ingestion
-    [ 02 ] ◈ Search Engine & Metadata Query
-    [ 03 ] ◈ Multi-Stream Batch Pipeline
-    [ 04 ] ◈ Browse Local Storage Directory
-    [ 05 ] ◈ System Preferences & Settings
-    [ 00 ] ◈ Exit
+  ❯ ◈ Direct URL Stream Ingestion
+    ◈ Webpage Media Sniffer & Playlist Extractor
+    ◈ Search Engine & Metadata Query
+    ◈ Multi-Stream Batch Pipeline
+    ◈ Browse Local Storage Directory
+    ◈ System Preferences & Settings
+    ✕ Exit
 ```
 
 #### Step-by-Step Operations:
