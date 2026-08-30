@@ -41,11 +41,11 @@ def get_android_paths() -> List[Tuple[str, str]]:
         base = "/storage/emulated/0"
 
     return [
-        ("🎬 Android Movies [الفيديوهات - تظهر في مشغلات الفيديو والاستديو تلقائياً]", posixpath.join(base, "Movies")),
-        ("🎵 Android Music [الصوتيات - تظهر في مشغلات الموسيقى وتطبيقات الصوت]", posixpath.join(base, "Music")),
-        ("📥 Android Download [تنزيلات الهاتف العامة]", posixpath.join(base, "Download")),
-        ("📷 Android DCIM [معرض الوسائط والكاميرا الرئيسي]", posixpath.join(base, "DCIM")),
-        ("🎙️ Android Podcasts [البودكاست والملفات الصوتية]", posixpath.join(base, "Podcasts")),
+        ("◈ Android Movies (Auto-indexed by Video Players & Gallery)", posixpath.join(base, "Movies")),
+        ("◈ Android Music (Auto-indexed by Music & Audio Players)", posixpath.join(base, "Music")),
+        ("◈ Android Download (System Default Shared Downloads)", posixpath.join(base, "Download")),
+        ("◈ Android DCIM (Camera & Media Gallery)", posixpath.join(base, "DCIM")),
+        ("◈ Android Podcasts (Podcasts & Voice Media)", posixpath.join(base, "Podcasts")),
     ]
 
 def get_suggested_download_dirs() -> List[Tuple[str, str]]:
@@ -56,7 +56,7 @@ def get_suggested_download_dirs() -> List[Tuple[str, str]]:
     suggestions: List[Tuple[str, str]] = []
     
     # 1. Project local storage
-    suggestions.append(("📁 مجلد التنزيلات الداخلي (Project Storage)", DEFAULT_DOWNLOADS_DIR))
+    suggestions.append(("◈ Project Workspace Storage", DEFAULT_DOWNLOADS_DIR))
     
     android_env = is_android()
     android_paths = get_android_paths()
@@ -71,19 +71,19 @@ def get_suggested_download_dirs() -> List[Tuple[str, str]]:
     
     desktop_dir = os.path.join(userprofile, "Desktop")
     if os.path.exists(desktop_dir) or not android_env:
-        suggestions.append(("🖥️ سطح المكتب (Desktop)", desktop_dir))
+        suggestions.append(("◈ Desktop Directory", desktop_dir))
         
     downloads_dir = os.path.join(userprofile, "Downloads")
     if os.path.exists(downloads_dir) or not android_env:
-        suggestions.append(("📥 تنزيلات النظام (Downloads)", downloads_dir))
+        suggestions.append(("◈ User Downloads Directory", downloads_dir))
         
     videos_dir = os.path.join(userprofile, "Videos")
     if os.path.exists(videos_dir):
-        suggestions.append(("🎬 مجلد الفيديوهات (Videos)", videos_dir))
+        suggestions.append(("◈ Videos Library", videos_dir))
         
     music_dir = os.path.join(userprofile, "Music")
     if os.path.exists(music_dir):
-        suggestions.append(("🎵 مجلد الموسيقى (Music)", music_dir))
+        suggestions.append(("◈ Music Library", music_dir))
         
     # 4. If not on Android, append Android presets as options for multi-device/remote setups
     if not android_env:

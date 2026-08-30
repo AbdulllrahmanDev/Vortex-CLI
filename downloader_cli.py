@@ -345,7 +345,7 @@ def settings_menu():
                 Choice("◈ Modify Storage Target Directory", value="change_dir"),
                 Choice("◈ Set Default Video Quality Profile", value="change_v_quality"),
                 Choice("◈ Set Default Audio Bitrate Profile", value="change_a_quality"),
-                Choice("◈ Check & Update VORTEX (تحديث البرنامج والمحرك)", value="update"),
+                Choice("◈ Check & Update VORTEX (App & Engine Upgrades)", value="update"),
                 Choice("◈ About VORTEX & Developer Profile", value="about"),
                 Choice("◈ Restore Default Factory Configurations", value="reset"),
                 Choice("‹ Return to Main Menu", value="back"),
